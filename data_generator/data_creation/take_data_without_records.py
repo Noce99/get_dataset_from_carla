@@ -5,6 +5,7 @@ import signal
 import time
 import numpy as np
 import cv2
+from tabulate import tabulate
 from tqdm import tqdm
 import json
 
@@ -12,27 +13,21 @@ from ..config import CARLA_FPS, AMOUNT_OF_CARLA_FRAME_AFTER_WE_SAVE, IMAGE_W, IM
 from ..utils import lidar_to_histogram_features, color_info_string
 from .weather import get_a_random_weather
 
-STARTING_FRAME = None
-PATHS = {}
-ALREADY_OBTAINED_DATA_FROM_SENSOR = []
 
-
-def take_data_backbone(carla_egg_path, town_id, rpc_port, job_id, ego_vehicle_found_event, finished_taking_data_event,
-                       you_can_tick_event, how_many_frames, where_to_save, back_camera, lateral_cameras):
+def take_data_backbone(carla_egg_path, rpc_port, ego_vehicle_found_event, finished_taking_data_event,
+                       you_can_tick_event, how_many_frames, where_to_save):
     sys.path.append(carla_egg_path)
     try:
         import carla
     except:
         pass
 
+    STARTING_FRAME = None
+    PATHS = {}
+    ALREADY_OBTAINED_DATA_FROM_SENSOR = []
+
     # Setup witch cameras is present
     cameras_indexes = [0]
-    if back_camera:
-        cameras_indexes.append(2)
-    if lateral_cameras:
-        cameras_indexes.append(1)
-        cameras_indexes.append(3)
-    global ALREADY_OBTAINED_DATA_FROM_SENSOR
     ALREADY_OBTAINED_DATA_FROM_SENSOR = {f"rgb_{i}": False for i in cameras_indexes}
     ALREADY_OBTAINED_DATA_FROM_SENSOR = dict({f"depth_{i}": False for i in cameras_indexes},
                                                **ALREADY_OBTAINED_DATA_FROM_SENSOR)
@@ -72,6 +67,12 @@ def take_data_backbone(carla_egg_path, town_id, rpc_port, job_id, ego_vehicle_fo
 
     # I will set a random weather
     a_random_weather, weather_dict = get_a_random_weather()
+    print("WEATHER:")
+    a_table_head = ["Weather Parameter", "Value"]
+    a_table = []
+    for key in weather_dict:
+        a_table.append([key, weather_dict[key]])
+    print(tabulate(a_table, headers=a_table_head, tablefmt="grid"))
     world.set_weather(a_random_weather)
 
     # LIDAR callback
@@ -160,7 +161,6 @@ def take_data_backbone(carla_egg_path, town_id, rpc_port, job_id, ego_vehicle_fo
     rgb_folders_name = [f"rgb_{i}" for i in cameras_indexes]
     depth_folders_name = [f"depth_{i}" for i in cameras_indexes]
 
-    global PATHS
     PATHS["lidar"] = os.path.join(where_to_save, "bev_lidar")
     for i in cameras_indexes:
         PATHS[f"rgb_{i}"] = os.path.join(where_to_save, rgb_folders_name[i])
@@ -183,10 +183,6 @@ def take_data_backbone(carla_egg_path, town_id, rpc_port, job_id, ego_vehicle_fo
     signal.signal(signal.SIGINT, cntrl_c)
 
     # Let's Run Some Carla's Step to let everything be set up
-    global DISABLE_ALL_SENSORS
-    global KEEP_GPS
-    global STARTING_FRAME
-    KEEP_GPS = False
     DISABLE_ALL_SENSORS = True
     for _ in tqdm(range(10), desc=color_info_string("Warming Up...")):
         you_can_tick_event.set()

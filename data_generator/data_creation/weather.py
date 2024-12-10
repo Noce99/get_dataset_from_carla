@@ -2,7 +2,6 @@
 import random
 
 
-
 def get_a_random_weather():
     import carla
     cloudiness = random.betavariate(alpha=1, beta=4) * 100
