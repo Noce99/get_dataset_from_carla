@@ -109,7 +109,14 @@ def generate_traffic(carla_ip, rpc_port, tm_port, number_of_vehicles, number_of_
         # Spawn vehicles
         # --------------
         batch = []
-        for n, transform in enumerate(spawn_points):
+        if hero:
+            blueprint = world.get_blueprint_library().find('vehicle.ford.mustang')
+            blueprint.set_attribute('color', blueprint.get_attribute('color').recommended_values[0])
+            blueprint.set_attribute('role_name', 'hero')
+            batch.append(SpawnActor(blueprint, carla.Transform(carla.Location(x=-103.179001, y=-14.434907, z=0.600000),
+                                                         carla.Rotation(pitch=0.000000, yaw=-89.357758, roll=0.000000)))
+                .then(SetAutopilot(FutureActor, True, traffic_manager.get_port())))
+        for n, transform in enumerate(spawn_points[:]):
             if n >= number_of_vehicles:
                 break
             blueprint = random.choice(blueprints)
@@ -119,12 +126,7 @@ def generate_traffic(carla_ip, rpc_port, tm_port, number_of_vehicles, number_of_
             if blueprint.has_attribute('driver_id'):
                 driver_id = random.choice(blueprint.get_attribute('driver_id').recommended_values)
                 blueprint.set_attribute('driver_id', driver_id)
-            if hero:
-                blueprint = world.get_blueprint_library().find('vehicle.ford.mustang')
-                blueprint.set_attribute('role_name', 'hero')
-                hero = False
-            else:
-                blueprint.set_attribute('role_name', 'autopilot')
+            blueprint.set_attribute('role_name', 'autopilot')
 
             # spawn the cars and set their autopilot and light state all together
             batch.append(SpawnActor(blueprint, transform)
@@ -224,8 +226,20 @@ def generate_traffic(carla_ip, rpc_port, tm_port, number_of_vehicles, number_of_
         sys.stdout.flush()
         sys.stderr.flush()
 
+        # Let's gt the hero actor
+        possible_vehicles = world.get_actors().filter('vehicle.*')
+        for vehicle in possible_vehicles:
+            if vehicle.attributes['role_name'] == 'hero':
+                print("Ego vehicle found")
+                hero_actor = vehicle
+                break
+
         while True:
             world.tick()
+            hero_transform = hero_actor.get_transform()
+            hero_transform.location.z += 30
+            hero_transform.rotation.pitch = -90.
+            world.get_spectator().set_transform(hero_transform)
     finally:
         settings = world.get_settings()
         settings.synchronous_mode = False

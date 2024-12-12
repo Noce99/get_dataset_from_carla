@@ -59,5 +59,6 @@ def histogram_mono_to_rgb(representation: torch.Tensor):
     rgb_representation = np.ones((positive_polarity.shape[0], positive_polarity.shape[1], 3)) * [255, 255, 255]
     rgb_representation[positive_polarity > 0] = [255, 0, 0]
     rgb_representation[negative_polarity > 0] = [0, 0, 255]
+    rgb_representation[positive_polarity > negative_polarity] = [255, 0, 0]
 
     return rgb_representation

@@ -46,10 +46,6 @@ class Histogram(EventRepresentation):
 
         pol = (pol.float()/2 + 0.5).int()
 
-        print(f"X in [{x.min()}; {x.max()}] [{self.width}]")
-        print(f"Y in [{y.min()}; {y.max()}] [{self.height}]")
-        print(f"POL in [{torch.unique(pol)}]")
-
         histo = torch.zeros((2, self.height, self.width), dtype=torch.float, requires_grad=False)
         with (torch.no_grad()):
             pol = pol.int() # Let's make the polarity an integer

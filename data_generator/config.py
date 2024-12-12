@@ -7,7 +7,7 @@ import datetime
 
 # TAKE DATA
 MAX_NUM_OF_ATTEMPTS = 10  # maximum number of attempts to start up all the carla's chain!
-CARLA_FPS = 20
+CARLA_FPS = 200
 IMAGE_W = 1024
 IMAGE_H = 256
 BEV_IMAGE_W = 256
