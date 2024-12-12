@@ -156,12 +156,11 @@ def set_up_traffic_manager_and_wait_till_its_up(carla_ip:str, rpc_port:int, tm_p
                                                 number_of_vehicles:int, number_of_walkers:int,
                                                 carla_server_pid:shared_ctype, traffic_manager_pid:shared_ctype,
                                                 logs_path:str, hero:bool=True):
-    you_can_tick = multiprocessing.Event()
     traffic_manager_is_up = multiprocessing.Event()
     set_up_traffic_manager_process = multiprocessing.Process(target=generate_traffic,
                                                              args=(carla_ip, rpc_port, tm_port, number_of_vehicles,
                                                                    number_of_walkers, traffic_manager_is_up,
-                                                                   you_can_tick, logs_path, hero))
+                                                                   logs_path, hero))
     set_up_traffic_manager_process.start()
 
     traffic_manager_pid.value = set_up_traffic_manager_process.pid
@@ -169,10 +168,10 @@ def set_up_traffic_manager_and_wait_till_its_up(carla_ip:str, rpc_port:int, tm_p
     while True:
         if not psutil.pid_exists(carla_server_pid.value):
             set_up_traffic_manager_process.kill()
-            return False, True, you_can_tick, traffic_manager_is_up, set_up_traffic_manager_process # Means Carla Crashed!
+            return False, True, traffic_manager_is_up, set_up_traffic_manager_process # Means Carla Crashed!
         if not set_up_traffic_manager_process.is_alive():
             set_up_traffic_manager_process.join()
             os.kill(carla_server_pid.value, signal.SIGKILL)
-            return True, False, you_can_tick, traffic_manager_is_up, set_up_traffic_manager_process # Means Traffic Manager Crashed!
+            return True, False, traffic_manager_is_up, set_up_traffic_manager_process # Means Traffic Manager Crashed!
         if traffic_manager_is_up.is_set():
-            return True, True, you_can_tick, traffic_manager_is_up, set_up_traffic_manager_process # Means everything good!
+            return True, True, traffic_manager_is_up, set_up_traffic_manager_process # Means everything good!

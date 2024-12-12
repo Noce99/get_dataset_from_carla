@@ -31,7 +31,7 @@ def get_actor_blueprints(world, filter, generation):
         print("   Warning! Actor Generation is not valid. No actor will be spawned.")
         return []
 
-def generate_traffic(carla_ip, rpc_port, tm_port, number_of_vehicles, number_of_walkers, traffic_manager_is_up, you_can_tick, logs_path, hero=True):
+def generate_traffic(carla_ip, rpc_port, tm_port, number_of_vehicles, number_of_walkers, traffic_manager_is_up, logs_path, hero=True):
     try:
         import carla
     except:
@@ -225,9 +225,7 @@ def generate_traffic(carla_ip, rpc_port, tm_port, number_of_vehicles, number_of_
         sys.stderr.flush()
 
         while True:
-            if you_can_tick.is_set():
-                you_can_tick.clear()
-                world.tick()
+            world.tick()
     finally:
         settings = world.get_settings()
         settings.synchronous_mode = False

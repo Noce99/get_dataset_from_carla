@@ -15,7 +15,7 @@ from .events import Events
 
 
 def take_data(carla_egg_path, rpc_port, ego_vehicle_found_event, finished_taking_data_event,
-              you_can_tick_event, how_many_seconds, where_to_save, sensors_json):
+              how_many_seconds, where_to_save, sensors_json):
     sys.path.append(carla_egg_path)
     try:
         import carla
@@ -139,29 +139,16 @@ def take_data(carla_egg_path, rpc_port, ego_vehicle_found_event, finished_taking
     # Let's Run Some Carla's Step to let everything be set up
     disable_all_sensors = True
     for _ in tqdm(range(10), desc=color_info_string("Warming Up...")):
-        you_can_tick_event.set()
         world_snapshot = world.wait_for_tick()
         starting_frame = world_snapshot.frame
-        time.sleep(0.3)
 
     time.sleep(3)
     starting_frame += 1
     disable_all_sensors = False
 
-    you_can_tick_event.set()
     # last_print = ""
     for _ in tqdm(range(how_many_seconds * frames_hz),
                   desc=color_info_string("Taking data...")):
-        world_snapshot = world.wait_for_tick()
-        while True:
-            if sum(tick_obtained_from_sensor.values()) == (world_snapshot.frame - starting_frame + 1)*len(tick_obtained_from_sensor):
-                break
-            # else:
-            #     to_print = f"{sum(tick_obtained_from_sensor.values())}/{(world_snapshot.frame - starting_frame + 1)*len(tick_obtained_from_sensor)}"
-            #     if last_print != to_print:
-            #         print(tick_obtained_from_sensor)
-            #         print(to_print)
-            #         last_print = to_print
-        you_can_tick_event.set()
+        world.wait_for_tick()
 
     finished_taking_data_event.set()

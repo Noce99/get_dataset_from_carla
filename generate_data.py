@@ -149,7 +149,6 @@ def run_all(args, where_to_save, carla_ue4_path, carla_log_path, sensors_json):
     traffic_manager_pid = multiprocessing.Value(c_int)
     carla_is_ok, \
     traffic_manager_is_ok, \
-    you_can_tick, \
     traffic_manager_is_up, \
     set_up_traffic_manager_process = set_up_traffic_manager_and_wait_till_its_up(
         carla_ip=args.carla_ip,
@@ -177,7 +176,7 @@ def run_all(args, where_to_save, carla_ue4_path, carla_log_path, sensors_json):
     finished_taking_data_event = multiprocessing.Event()
     data_creation_process = multiprocessing.Process(target=take_data.take_data,
                                                     args=(egg_file_path, args.rpc_port,ego_vehicle_found_event,
-                                                          finished_taking_data_event, you_can_tick,
+                                                          finished_taking_data_event,
                                                           args.num_of_seconds, where_to_save, sensors_json))
     data_creation_process.start()
     data_creation_pid.value = data_creation_process.pid
