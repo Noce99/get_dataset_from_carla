@@ -1,0 +1,86 @@
+[
+  {
+    "friendly_name": "LidarExample",
+    "blue_print_name": "sensor.lidar.ray_cast",
+    "attributes": {
+      "range": 100,
+      "noise_stddev": 0.0,
+      "upper_fov": 0.0,
+      "lower_fov": -25.0,
+      "channels": 32,
+      "rotation_frequency": 20.0,
+      "points_per_second": 600000
+    },
+    "location": {
+      "x": 0.0,
+      "y": 0.0,
+      "z": 2.0,
+      "pitch": 0.0,
+      "roll": 0.0,
+      "yaw": 0.0
+    },
+    "folder_name": "lidar_example",
+    "callback": "lidar_callback",
+    "frequency_hz": 1
+  },
+  {
+    "friendly_name": "RGBExample",
+    "blue_print_name": "sensor.camera.rgb",
+    "attributes": {
+      "fov": 90,
+      "image_size_x": 640,
+      "image_size_y": 480
+    },
+    "location": {
+      "x": 0.0,
+      "y": 0.0,
+      "z": 2.0,
+      "pitch": 0.0,
+      "roll": 0.0,
+      "yaw": 0.0
+    },
+    "folder_name": "rgb_example",
+    "callback": "rgb_callback",
+    "frequency_hz": 1
+  },
+  {
+    "friendly_name": "DepthExample",
+    "blue_print_name": "sensor.camera.depth",
+    "attributes": {
+      "fov": 90,
+      "image_size_x": 640,
+      "image_size_y": 480
+    },
+    "location": {
+      "x": 0.0,
+      "y": 0.0,
+      "z": 2.0,
+      "pitch": 0.0,
+      "roll": 0.0,
+      "yaw": 0.0
+    },
+    "folder_name": "depth_example",
+    "callback": "depth_callback",
+    "frequency_hz": 20
+  },
+  {
+    "friendly_name": "EventExample",
+    "blue_print_name": "sensor.camera.dvs",
+    "attributes": {
+      "fov": 90,
+      "image_size_x": 640,
+      "image_size_y": 480
+    },
+    "location": {
+      "x": 0.0,
+      "y": 0.0,
+      "z": 2.0,
+      "pitch": 0.0,
+      "roll": 0.0,
+      "yaw": 0.0
+    },
+    "folder_name": "event_example",
+    "callback": "event_callback",
+    "frequency_hz": 1
+  }
+]

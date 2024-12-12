@@ -1,4 +1,5 @@
 import argparse
+import json
 import multiprocessing
 import os
 import pathlib
@@ -9,7 +10,7 @@ from ctypes import c_int
 from tabulate import tabulate
 import shutil
 
-from data_generator.data_creation import take_data_without_records
+from data_generator.data_creation import take_data
 from data_generator import utils
 from data_generator import config
 from datetime import datetime
@@ -71,8 +72,8 @@ def get_arguments():
         type=int
     )
     arg_parser.add_argument(
-        '--num_of_frames',
-        help='Number of Frames to take! (default: 10)',
+        '--num_of_seconds',
+        help='Number of Seconds to take! (default: 10)',
         required=False,
         default=10,
         type=int
@@ -111,7 +112,7 @@ def kill_all():
     pids_to_be_killed = []
 
 
-def run_all(args, where_to_save, carla_ue4_path, carla_log_path):
+def run_all(args, where_to_save, carla_ue4_path, carla_log_path, sensors_json):
     # (1) LAUNCH CARLA SERVER
     print("Launching Carla Server...")
     carla_server_pid = multiprocessing.Value(c_int)
@@ -174,15 +175,15 @@ def run_all(args, where_to_save, carla_ue4_path, carla_log_path):
     data_creation_pid = multiprocessing.Value(c_int)
     ego_vehicle_found_event = multiprocessing.Event()
     finished_taking_data_event = multiprocessing.Event()
-    data_creation_process = multiprocessing.Process(target=take_data_without_records.take_data_backbone,
+    data_creation_process = multiprocessing.Process(target=take_data.take_data,
                                                     args=(egg_file_path, args.rpc_port,ego_vehicle_found_event,
                                                           finished_taking_data_event, you_can_tick,
-                                                          args.num_of_frames, where_to_save))
+                                                          args.num_of_seconds, where_to_save, sensors_json))
     data_creation_process.start()
     data_creation_pid.value = data_creation_process.pid
     pids_to_be_killed.append(data_creation_pid.value)
 
-    print(utils.get_a_title(f"STARTING TO TAKE DATA [frames = {args.num_of_frames}]", color="green"))
+    print(utils.get_a_title(f"STARTING TO TAKE DATA [{args.num_of_seconds} s]", color="green"))
     start_time = time.time()
     while True:
         if not psutil.pid_exists(carla_server_pid.value):
@@ -197,7 +198,7 @@ def run_all(args, where_to_save, carla_ue4_path, carla_log_path):
         if finished_taking_data_event.is_set():
             break
 
-    print(utils.get_a_title(f"FINISHED TO TAKE DATA [frames = {args.num_of_frames}]", color="green"))
+    print(utils.get_a_title(f"FINISHED TO TAKE DATA [{args.num_of_seconds} s]", color="green"))
 
     # (6) CLEANING EVERYTHING
     kill_all()
@@ -237,8 +238,10 @@ if __name__ == "__main__":
 
     # (2) LET'S TRY TO GET DATA
     my_where_to_save = None
+    with open(os.path.join(repo_path, "sensors.json"), "r") as file:
+        sensors_json = json.load(file)
     for i in range(config.MAX_NUM_OF_ATTEMPTS):
-        # (2.1) FOR EACH ATTEMPT CREATE A FOLDER IN THE DATASETS ONE
+        # (2.1) FOR EACH ATTEMPT, CREATE A FOLDER IN THE DATASETS ONE
         now = datetime.now()
         current_time = now.strftime("%Y_%m_%d__%H_%M_%S")
         my_where_to_save = os.path.join(datasets_folder_path, f"{current_time}_{config.TOWN_DICT[my_args.town]}_{i}")
@@ -249,7 +252,7 @@ if __name__ == "__main__":
         try:
             print(utils.get_a_title(f"ATTEMPT [{i + 1}/{config.MAX_NUM_OF_ATTEMPTS}]", color="blue"))
             # (2.2) LET'S RUN ALL FOR EACH ATTEMPT
-            if run_all(my_args, my_where_to_save, my_carla_ue4_path, my_carla_log_path):
+            if run_all(my_args, my_where_to_save, my_carla_ue4_path, my_carla_log_path, sensors_json):
                 break
         except utils.NutException as e:
             print(e.message)
