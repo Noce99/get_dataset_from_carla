@@ -1,12 +1,16 @@
+import math
+
 import numpy as np
 import cv2
 import os
 import torch
 import h5py
 import hdf5plugin
+import matplotlib.pyplot as plt
 
 from ..utils import lidar_to_histogram_features
 from .events_representations import Histogram
+from .disparity_visualization import disp_to_rgb
 
 STARTING_FRAME = 10000
 TOTAL_NUM_OF_EVENTS = 0
@@ -39,20 +43,29 @@ class Callbacks:
     @staticmethod
     def rgb_callback(data, disable_all_sensors, where_to_save):
         if not disable_all_sensors:
-            rgb = np.reshape(np.copy(data.raw_data), (data.height, data.width, 4))
+            bgr = np.reshape(np.copy(data.raw_data), (data.height, data.width, 4))
             saved_frame = (data.frame - STARTING_FRAME)
-            cv2.imwrite(os.path.join(where_to_save, f"{saved_frame}.jpg"), rgb)
+            cv2.imwrite(os.path.join(where_to_save, f"{saved_frame}.jpg"), bgr)
 
     # DEPTH callback
     @staticmethod
     def depth_callback(data, disable_all_sensors, where_to_save):
         if not disable_all_sensors:
             import carla
-            data.convert(carla.ColorConverter.LogarithmicDepth)
-            depth = np.reshape(np.copy(data.raw_data), (data.height, data.width, 4))
-            depth = depth[:, :, 0]
+            raw_depth = np.reshape(np.copy(data.raw_data), (data.height, data.width, 4))
+            b = raw_depth[:, :, 0] / 256
+            g = raw_depth[:, :, 1] / 256
+            r = raw_depth[:, :, 2] / 256
+            depth = (r + g * 256 + b * 256 * 256) / (256 * 256 * 256 - 1)
+            m_depth = 1000 * depth * 256
+            m_depth[m_depth == m_depth.max()] = 0 # THIS SET BUGS to
+
             saved_frame = data.frame - STARTING_FRAME
-            cv2.imwrite(os.path.join(where_to_save, f"{saved_frame}.png"), depth)
+
+            focal_length = data.width / (2 * math.tan(data.fov * math.pi / 180 / 2))
+            disparity = 0.6 * focal_length / m_depth
+
+            cv2.imwrite(os.path.join(where_to_save, f"{saved_frame}.png"), disparity*3)
 
     @staticmethod
     def event_callback(data, disable_all_sensors, where_to_save):
