@@ -26,7 +26,7 @@
       "fov": 90,
       "image_size_x": 640,
       "image_size_y": 480,
-      "sensor_tick": 1
+      "sensor_tick": 0.01
     },
     "location": {
       "x": 0.0,
@@ -48,7 +48,7 @@
       "image_size_y": 480,
       "positive_threshold": 0.2,
       "negative_threshold": 0.2,
-      "sensor_tick": 0.1
+      "sensor_tick": 0.01
     },
     "location": {
       "x": 0.0,
