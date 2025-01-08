@@ -72,13 +72,6 @@ def get_arguments():
         type=int
     )
     arg_parser.add_argument(
-        '--num_of_seconds',
-        help='Number of Seconds to take! (default: 10)',
-        required=False,
-        default=10,
-        type=int
-    )
-    arg_parser.add_argument(
         '--dataset_path',
         help=f'Where to save the data! (default: {os.path.join(pathlib.Path(__file__).parent.resolve(), "datasets")})',
         required=False,
@@ -176,13 +169,13 @@ def run_all(args, where_to_save, carla_ue4_path, carla_log_path, sensors_json):
     finished_taking_data_event = multiprocessing.Event()
     data_creation_process = multiprocessing.Process(target=take_data.take_data,
                                                     args=(egg_file_path, args.rpc_port,ego_vehicle_found_event,
-                                                          finished_taking_data_event,
-                                                          args.num_of_seconds, where_to_save, sensors_json))
+                                                          finished_taking_data_event, where_to_save, sensors_json))
     data_creation_process.start()
     data_creation_pid.value = data_creation_process.pid
     pids_to_be_killed.append(data_creation_pid.value)
 
-    print(utils.get_a_title(f"STARTING TO TAKE DATA [{args.num_of_seconds} s]", color="green"))
+    print(utils.get_a_title(f"STARTING TO TAKE DATA [{sensors_json['number_of_frames_to_take']} FRAMES]",
+                            color="green"))
     start_time = time.time()
     while True:
         if not psutil.pid_exists(carla_server_pid.value):
@@ -197,7 +190,8 @@ def run_all(args, where_to_save, carla_ue4_path, carla_log_path, sensors_json):
         if finished_taking_data_event.is_set():
             break
 
-    print(utils.get_a_title(f"FINISHED TO TAKE DATA [{args.num_of_seconds} s]", color="green"))
+    print(utils.get_a_title(f"FINISHED TO TAKE DATA [{sensors_json['number_of_frames_to_take']} FRAMES]",
+                            color="green"))
 
     # (6) CLEANING EVERYTHING
     kill_all()

@@ -3,11 +3,11 @@ import os
 import signal
 import time
 
+import h5py
 import numpy
 from tabulate import tabulate
 from tqdm import tqdm
 
-from ..config import CARLA_FPS, AMOUNT_OF_CARLA_FRAME_AFTER_WE_SAVE
 from ..utils import  color_info_string
 from .weather import get_a_random_weather
 from .call_back import Callbacks
@@ -15,7 +15,7 @@ from .events import Events
 
 
 def take_data(carla_egg_path, rpc_port, ego_vehicle_found_event, finished_taking_data_event,
-              how_many_seconds, where_to_save, sensors_json):
+              where_to_save, sensors_json):
     sys.path.append(carla_egg_path)
     try:
         import carla
@@ -26,13 +26,13 @@ def take_data(carla_egg_path, rpc_port, ego_vehicle_found_event, finished_taking
     tick_obtained_from_sensor = {}
 
     # (1) Connect the client and set up bp library
-    frames_hz = CARLA_FPS
+    carla_tick = sensors_json["carla_tick"]
     client = carla.Client('localhost', rpc_port)
     client.set_timeout(60.0)
     world = client.get_world()
     settings = world.get_settings()
     settings.synchronous_mode = True
-    settings.fixed_delta_seconds = 1 / frames_hz
+    settings.fixed_delta_seconds = carla_tick
     # In this case, the simulator will take x steps to recreate one second of
     # the simulated world.
     settings.substepping = True
@@ -69,13 +69,13 @@ def take_data(carla_egg_path, rpc_port, ego_vehicle_found_event, finished_taking
     # world.set_weather(a_random_weather) TODO:UNCOMMENT FOR RANDOM WEATHER
 
     # (4) Let's add all the sensor in the sensor.json file!
-    print(f"Simulation at {frames_hz} frames per second")
+    print(f"Simulation at {1/carla_tick:.1f} frames per second")
     class MyCarlaSensors:
         def __init__(self, sensor_cfg):
             self.friendly_name = sensor_cfg["friendly_name"]
             self.callback_function_name = sensor_cfg["callback"]
             self.blue_print_name = sensor_cfg["blue_print_name"]
-            self.amount_of_frame_after_we_save = frames_hz * sensor_cfg["attributes"]["sensor_tick"]
+            self.amount_of_frame_after_we_save = sensor_cfg["attributes"]["sensor_tick"] / carla_tick
             print(f"{self.friendly_name} we save after {self.amount_of_frame_after_we_save:.2f} frames! [{1 / sensor_cfg['attributes']['sensor_tick']:.2f} fps]")
             if self.blue_print_name == "sensor.camera.dvs":
                 self.events = Events()
@@ -88,8 +88,21 @@ def take_data(carla_egg_path, rpc_port, ego_vehicle_found_event, finished_taking
                 carla.Location(x=location["x"], y=location["y"], z=location["z"]),
                 carla.Rotation(pitch=location["pitch"], roll=location["roll"], yaw=location["yaw"]))
             self.actor = world.spawn_actor(blue_print, transformation, attach_to=hero)
-            self.where_to_save_sensor = os.path.join(where_to_save, sensor_cfg["folder_name"])
-            os.mkdir(self.where_to_save_sensor)
+            h5_file_name = sensor_cfg["h5_file_name"]
+            if h5_file_name[-3:] != ".h5":
+                h5_file_name += ".h5"
+            self.h5_file_path = os.path.join(where_to_save, h5_file_name)
+            self.h5_file = h5py.File(self.h5_file_path, 'w')
+            self.h5_dataset = self.h5_file.create_dataset(
+                "dataset",
+                shape=(sensors_json["number_of_frames_to_take"], *tuple(sensor["h5_frame_shape"])),
+                dtype="float32",
+                compression="gzip",
+                chunks=(1, *tuple(sensor["h5_frame_shape"]))
+            )
+
+
+
             self.actor.listen(lambda data: self.callback(data))
             tick_obtained_from_sensor[sensor_cfg["friendly_name"]] = 0
 
@@ -97,15 +110,16 @@ def take_data(carla_egg_path, rpc_port, ego_vehicle_found_event, finished_taking
         def callback(self, data):
             getattr(Callbacks, self.callback_function_name)(    data,
                                                                 disable_all_sensors,
-                                                                self.where_to_save_sensor
+                                                                self.h5_dataset,
                                                             )
 
         def shutdown(self):
+            self.h5_file.close()
             self.actor.stop()
             self.actor.destroy()
 
     sensors = []
-    for sensor in sensors_json:
+    for sensor in sensors_json["sensors"]:
         sensors.append(MyCarlaSensors(sensor))
 
     def ctrl_c(_, __):
@@ -125,10 +139,9 @@ def take_data(carla_egg_path, rpc_port, ego_vehicle_found_event, finished_taking
     time.sleep(3)
     Callbacks.set_starting_frame(world.wait_for_tick().frame)
     disable_all_sensors = False
-    for _ in tqdm(range(how_many_seconds * frames_hz),
+    for _ in tqdm(range(sensors_json["number_of_frames_to_take"]),
                   desc=color_info_string("Taking data...")):
             world.wait_for_tick()
-
-    print(f"Average number of events: {Callbacks.average_num_of_events():.2f}")
-
     finished_taking_data_event.set()
+    # print(f"Average number of events: {Callbacks.average_num_of_events():.2f}")
+

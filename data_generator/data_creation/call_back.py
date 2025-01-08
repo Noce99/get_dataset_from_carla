@@ -29,7 +29,7 @@ class Callbacks:
 
     # LIDAR callback
     @staticmethod
-    def lidar_callback(data, disable_all_sensors, where_to_save):
+    def lidar_callback(data, disable_all_sensors, h5_dataset):
         if not disable_all_sensors:
             lidar_data_raw = np.copy(np.frombuffer(data.raw_data, dtype=np.dtype('f4')))
             lidar_data_raw = np.reshape(lidar_data_raw, (int(lidar_data_raw.shape[0] / 4), 4))
@@ -38,18 +38,18 @@ class Callbacks:
             lidar_data = lidar_to_histogram_features(lidar_data_raw[:, :3])[0]
             lidar_data = np.rot90(lidar_data)
             saved_frame = (data.frame - STARTING_FRAME)
-            cv2.imwrite(os.path.join(where_to_save, f"{saved_frame}.png"), lidar_data)
+            # cv2.imwrite(os.path.join(where_to_save, f"{saved_frame}.png"), lidar_data)
     # CAMERAS callback
     @staticmethod
-    def rgb_callback(data, disable_all_sensors, where_to_save):
+    def rgb_callback(data, disable_all_sensors, h5_dataset):
         if not disable_all_sensors:
             bgr = np.reshape(np.copy(data.raw_data), (data.height, data.width, 4))
             saved_frame = (data.frame - STARTING_FRAME)
-            cv2.imwrite(os.path.join(where_to_save, f"{saved_frame}.jpg"), bgr)
+            # cv2.imwrite(os.path.join(where_to_save, f"{saved_frame}.jpg"), bgr)
 
     # DEPTH callback
     @staticmethod
-    def depth_callback(data, disable_all_sensors, where_to_save):
+    def depth_callback(data, disable_all_sensors, h5_dataset):
         if not disable_all_sensors:
             import carla
             raw_depth = np.reshape(np.copy(data.raw_data), (data.height, data.width, 4))
@@ -58,17 +58,17 @@ class Callbacks:
             r = raw_depth[:, :, 2] / 256
             depth = (r + g * 256 + b * 256 * 256) / (256 * 256 * 256 - 1)
             m_depth = 1000 * depth * 256
-            m_depth[m_depth == m_depth.max()] = 0 # THIS SET BUGS to
 
             saved_frame = data.frame - STARTING_FRAME
 
             focal_length = data.width / (2 * math.tan(data.fov * math.pi / 180 / 2))
             disparity = 0.6 * focal_length / m_depth
-
-            cv2.imwrite(os.path.join(where_to_save, f"{saved_frame}.png"), disparity*3)
+            disparity[m_depth == m_depth.max()] = 0
+            h5_dataset[saved_frame] = disparity
+            # cv2.imwrite(os.path.join("/home/enrico/Downloads", f"{saved_frame}.png"), disparity*3)
 
     @staticmethod
-    def event_callback(data, disable_all_sensors, where_to_save):
+    def event_callback(data, disable_all_sensors, h5_dataset):
         if not disable_all_sensors:
             x = np.array(data.to_array_x())
             y = np.array(data.to_array_y())
@@ -83,4 +83,5 @@ class Callbacks:
             TOTAL_NUM_OF_EVENTS += x.shape[0]
             TOTAL_NUM_OF_EVENTS_STEP += 1
             saved_frame = (data.frame - STARTING_FRAME)
-            cv2.imwrite(os.path.join(where_to_save, f"{saved_frame}.png"), histo.to_rgb_mono(representation))
+            h5_dataset[saved_frame] = representation.numpy()
+            # cv2.imwrite(os.path.join(where_to_save, f"{saved_frame}.png"), histo.to_rgb_mono(representation))

@@ -1,66 +1,73 @@
-[
-  {
-    "friendly_name": "Depth",
-    "blue_print_name": "sensor.camera.depth",
-    "attributes": {
-      "fov": 90,
-      "image_size_x": 640,
-      "image_size_y": 480,
-      "sensor_tick": 0.01
+{
+  "carla_tick": 0.01,
+  "number_of_frames_to_take": 500,
+  "sensors": [
+    {
+      "friendly_name": "Depth",
+      "blue_print_name": "sensor.camera.depth",
+      "attributes": {
+        "fov": 90,
+        "image_size_x": 640,
+        "image_size_y": 480,
+        "sensor_tick": 0.01
+      },
+      "location": {
+        "x": 1.0,
+        "y": -0.3,
+        "z": 2.0,
+        "pitch": 0.0,
+        "roll": 0.0,
+        "yaw": 0.0
+      },
+      "h5_file_name": "disparity",
+      "h5_frame_shape": [480, 640],
+      "callback": "depth_callback"
     },
-    "location": {
-      "x": 1.0,
-      "y": -0.3,
-      "z": 2.0,
-      "pitch": 0.0,
-      "roll": 0.0,
-      "yaw": 0.0
+    {
+      "friendly_name": "Event_Left",
+      "blue_print_name": "sensor.camera.dvs",
+      "attributes": {
+        "fov": 90,
+        "image_size_x": 640,
+        "image_size_y": 480,
+        "positive_threshold": 0.2,
+        "negative_threshold": 0.2,
+        "sensor_tick": 0.01
+      },
+      "location": {
+        "x": 1.0,
+        "y": -0.3,
+        "z": 2.0,
+        "pitch": 0.0,
+        "roll": 0.0,
+        "yaw": 0.0
+      },
+      "h5_file_name": "event_left",
+      "h5_frame_shape": [2, 480, 640],
+      "callback": "event_callback"
     },
-    "folder_name": "disparity",
-    "callback": "depth_callback"
-  },
-  {
-    "friendly_name": "Event_Left",
-    "blue_print_name": "sensor.camera.dvs",
-    "attributes": {
-      "fov": 90,
-      "image_size_x": 640,
-      "image_size_y": 480,
-      "positive_threshold": 0.2,
-      "negative_threshold": 0.2,
-      "sensor_tick": 0.01
-    },
-    "location": {
-      "x": 1.0,
-      "y": -0.3,
-      "z": 2.0,
-      "pitch": 0.0,
-      "roll": 0.0,
-      "yaw": 0.0
-    },
-    "folder_name": "event_left",
-    "callback": "event_callback"
-  },
-  {
-    "friendly_name": "Event_Right",
-    "blue_print_name": "sensor.camera.dvs",
-    "attributes": {
-      "fov": 90,
-      "image_size_x": 640,
-      "image_size_y": 480,
-      "positive_threshold": 0.2,
-      "negative_threshold": 0.2,
-      "sensor_tick": 0.01
-    },
-    "location": {
-      "x": 1.0,
-      "y": 0.3,
-      "z": 2.0,
-      "pitch": 0.0,
-      "roll": 0.0,
-      "yaw": 0.0
-    },
-    "folder_name": "event_right",
-    "callback": "event_callback"
-  }
-]
+    {
+      "friendly_name": "Event_Right",
+      "blue_print_name": "sensor.camera.dvs",
+      "attributes": {
+        "fov": 90,
+        "image_size_x": 640,
+        "image_size_y": 480,
+        "positive_threshold": 0.2,
+        "negative_threshold": 0.2,
+        "sensor_tick": 0.01
+      },
+      "location": {
+        "x": 1.0,
+        "y": 0.3,
+        "z": 2.0,
+        "pitch": 0.0,
+        "roll": 0.0,
+        "yaw": 0.0
+      },
+      "h5_file_name": "event_right",
+      "h5_frame_shape": [2, 480, 640],
+      "callback": "event_callback"
+    }
+  ]
+}
