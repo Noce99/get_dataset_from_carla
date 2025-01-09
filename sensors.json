@@ -1,6 +1,6 @@
 {
   "carla_tick": 0.01,
-  "number_of_frames_to_take": 500,
+  "number_of_frames_to_take": 1000,
   "sensors": [
     {
       "friendly_name": "Depth",

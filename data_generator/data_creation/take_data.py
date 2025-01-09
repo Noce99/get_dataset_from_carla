@@ -5,6 +5,7 @@ import time
 
 import h5py
 import numpy
+import numpy as np
 from tabulate import tabulate
 from tqdm import tqdm
 
@@ -12,7 +13,7 @@ from ..utils import  color_info_string
 from .weather import get_a_random_weather
 from .call_back import Callbacks
 from .events import Events
-
+from ..utils import NutException, color_error_string
 
 def take_data(carla_egg_path, rpc_port, ego_vehicle_found_event, finished_taking_data_event,
               where_to_save, sensors_json):
@@ -66,12 +67,13 @@ def take_data(carla_egg_path, rpc_port, ego_vehicle_found_event, finished_taking
     for key in weather_dict:
         a_table.append([key, weather_dict[key]])
     print(tabulate(a_table, headers=a_table_head, tablefmt="grid"))
-    # world.set_weather(a_random_weather) TODO:UNCOMMENT FOR RANDOM WEATHER
+    world.set_weather(a_random_weather)
 
     # (4) Let's add all the sensor in the sensor.json file!
     print(f"Simulation at {1/carla_tick:.1f} frames per second")
     class MyCarlaSensors:
         def __init__(self, sensor_cfg):
+            self.sensor_cfg = sensor_cfg
             self.friendly_name = sensor_cfg["friendly_name"]
             self.callback_function_name = sensor_cfg["callback"]
             self.blue_print_name = sensor_cfg["blue_print_name"]
@@ -92,17 +94,7 @@ def take_data(carla_egg_path, rpc_port, ego_vehicle_found_event, finished_taking
             if h5_file_name[-3:] != ".h5":
                 h5_file_name += ".h5"
             self.h5_file_path = os.path.join(where_to_save, h5_file_name)
-            self.h5_file = h5py.File(self.h5_file_path, 'w')
-            self.h5_dataset = self.h5_file.create_dataset(
-                "dataset",
-                shape=(sensors_json["number_of_frames_to_take"], *tuple(sensor["h5_frame_shape"])),
-                dtype="float32",
-                compression="gzip",
-                chunks=(1, *tuple(sensor["h5_frame_shape"]))
-            )
-
-
-
+            self.data = []
             self.actor.listen(lambda data: self.callback(data))
             tick_obtained_from_sensor[sensor_cfg["friendly_name"]] = 0
 
@@ -110,13 +102,34 @@ def take_data(carla_egg_path, rpc_port, ego_vehicle_found_event, finished_taking
         def callback(self, data):
             getattr(Callbacks, self.callback_function_name)(    data,
                                                                 disable_all_sensors,
-                                                                self.h5_dataset,
+                                                                self.data,
                                                             )
 
         def shutdown(self):
-            self.h5_file.close()
             self.actor.stop()
             self.actor.destroy()
+
+        def save_h5(self):
+            print(f"Saving h5 file {self.friendly_name}...")
+            if len(self.data) == sensors_json["number_of_frames_to_take"]:
+                stacked_array = np.stack(self.data)
+            elif len(self.data) > sensors_json["number_of_frames_to_take"]:
+                print(f"Too many getted data, I fix! {len(self.data)} wanted {sensors_json['number_of_frames_to_take']}")
+                stacked_array = np.stack(self.data[:sensors_json['number_of_frames_to_take']])
+            else:
+                # We need to take data again!
+                raise NutException(color_error_string(f"Some problem while getting al data. Something was lost!"))
+            start = time.time()
+            chunks = (1, *self.sensor_cfg["h5_frame_shape"])
+            print(f"chunks = {chunks}")
+            with h5py.File(self.h5_file_path, 'w') as f:
+                f.create_dataset("dataset",
+                                 data=stacked_array,
+                                 compression="gzip",
+                                 chunks=chunks
+                                 )
+            time_needed = time.time() - start
+            print(f"Saved h5 file {self.friendly_name} [{stacked_array.shape}] in {time_needed}")
 
     sensors = []
     for sensor in sensors_json["sensors"]:
@@ -142,6 +155,9 @@ def take_data(carla_egg_path, rpc_port, ego_vehicle_found_event, finished_taking
     for _ in tqdm(range(sensors_json["number_of_frames_to_take"]),
                   desc=color_info_string("Taking data...")):
             world.wait_for_tick()
+    disable_all_sensors = True
+    for a_sensor in sensors:
+        a_sensor.save_h5()
     finished_taking_data_event.set()
     # print(f"Average number of events: {Callbacks.average_num_of_events():.2f}")
 

@@ -83,6 +83,13 @@ def get_arguments():
         help='If ypu want to see the carla window!',
         action='store_true'
     )
+    arg_parser.add_argument(
+        '--sequence_id',
+        help='Sequence id! (default: 0)',
+        required=False,
+        default=0,
+        type=int
+    )
     args = arg_parser.parse_args()
     if args.town not in config.TOWN_DICT:
         error = f"Invalid Town Index! [{args.town}]\n" + \
@@ -235,9 +242,9 @@ if __name__ == "__main__":
         sensors_json = json.load(file)
     for i in range(config.MAX_NUM_OF_ATTEMPTS):
         # (2.1) FOR EACH ATTEMPT, CREATE A FOLDER IN THE DATASETS ONE
-        now = datetime.now()
-        current_time = now.strftime("%Y_%m_%d__%H_%M_%S")
-        my_where_to_save = os.path.join(datasets_folder_path, f"{current_time}_{config.TOWN_DICT[my_args.town]}_{i}")
+        # now = datetime.now()
+        # current_time = now.strftime("%Y_%m_%d__%H_%M_%S")
+        my_where_to_save = os.path.join(datasets_folder_path, f"{my_args.sequence_id:04}")
         if i > 0:
             # It's not the first attempt to we need to remove the previous failed data
             shutil.rmtree(my_where_to_save, ignore_errors=True)
@@ -254,4 +261,4 @@ if __name__ == "__main__":
         except KeyboardInterrupt:
             kill_all()
             print(utils.get_a_title("Bye Bye!", color="yellow"))
-            exit()
+            exit(99)

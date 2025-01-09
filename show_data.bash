@@ -1,2 +1,2 @@
 python show_data.py \
---path ./datasets/2025_01_08__16_23_43_Town10HD_0
+--path /media/enrico/Enrico_Datasets/carla_events/2025_01_09__14_59_51

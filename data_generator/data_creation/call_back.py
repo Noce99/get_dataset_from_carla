@@ -27,9 +27,10 @@ class Callbacks:
     def average_num_of_events():
         return TOTAL_NUM_OF_EVENTS / TOTAL_NUM_OF_EVENTS_STEP
 
+    """
     # LIDAR callback
     @staticmethod
-    def lidar_callback(data, disable_all_sensors, h5_dataset):
+    def lidar_callback(data, disable_all_sensors, data_list):
         if not disable_all_sensors:
             lidar_data_raw = np.copy(np.frombuffer(data.raw_data, dtype=np.dtype('f4')))
             lidar_data_raw = np.reshape(lidar_data_raw, (int(lidar_data_raw.shape[0] / 4), 4))
@@ -41,15 +42,16 @@ class Callbacks:
             # cv2.imwrite(os.path.join(where_to_save, f"{saved_frame}.png"), lidar_data)
     # CAMERAS callback
     @staticmethod
-    def rgb_callback(data, disable_all_sensors, h5_dataset):
+    def rgb_callback(data, disable_all_sensors, data_list):
         if not disable_all_sensors:
             bgr = np.reshape(np.copy(data.raw_data), (data.height, data.width, 4))
             saved_frame = (data.frame - STARTING_FRAME)
             # cv2.imwrite(os.path.join(where_to_save, f"{saved_frame}.jpg"), bgr)
+    """
 
     # DEPTH callback
     @staticmethod
-    def depth_callback(data, disable_all_sensors, h5_dataset):
+    def depth_callback(data, disable_all_sensors, data_list):
         if not disable_all_sensors:
             import carla
             raw_depth = np.reshape(np.copy(data.raw_data), (data.height, data.width, 4))
@@ -59,16 +61,16 @@ class Callbacks:
             depth = (r + g * 256 + b * 256 * 256) / (256 * 256 * 256 - 1)
             m_depth = 1000 * depth * 256
 
-            saved_frame = data.frame - STARTING_FRAME
+            # saved_frame = data.frame - STARTING_FRAME
 
             focal_length = data.width / (2 * math.tan(data.fov * math.pi / 180 / 2))
             disparity = 0.6 * focal_length / m_depth
             disparity[m_depth == m_depth.max()] = 0
-            h5_dataset[saved_frame] = disparity
+            data_list.append(disparity)
             # cv2.imwrite(os.path.join("/home/enrico/Downloads", f"{saved_frame}.png"), disparity*3)
 
     @staticmethod
-    def event_callback(data, disable_all_sensors, h5_dataset):
+    def event_callback(data, disable_all_sensors, data_list):
         if not disable_all_sensors:
             x = np.array(data.to_array_x())
             y = np.array(data.to_array_y())
@@ -82,6 +84,6 @@ class Callbacks:
             global TOTAL_NUM_OF_EVENTS, TOTAL_NUM_OF_EVENTS_STEP
             TOTAL_NUM_OF_EVENTS += x.shape[0]
             TOTAL_NUM_OF_EVENTS_STEP += 1
-            saved_frame = (data.frame - STARTING_FRAME)
-            h5_dataset[saved_frame] = representation.numpy()
+            # saved_frame = (data.frame - STARTING_FRAME)
+            data_list.append(representation.numpy())
             # cv2.imwrite(os.path.join(where_to_save, f"{saved_frame}.png"), histo.to_rgb_mono(representation))

@@ -113,8 +113,7 @@ def generate_traffic(carla_ip, rpc_port, tm_port, number_of_vehicles, number_of_
             blueprint = world.get_blueprint_library().find('vehicle.ford.mustang')
             blueprint.set_attribute('color', blueprint.get_attribute('color').recommended_values[0])
             blueprint.set_attribute('role_name', 'hero')
-            batch.append(SpawnActor(blueprint, carla.Transform(carla.Location(x=-103.179001, y=-14.434907, z=0.600000),
-                                                         carla.Rotation(pitch=0.000000, yaw=-89.357758, roll=0.000000)))
+            batch.append(SpawnActor(blueprint, spawn_points[random.randint(0, len(spawn_points) - 1)])
                 .then(SetAutopilot(FutureActor, True, traffic_manager.get_port())))
         for n, transform in enumerate(spawn_points[:]):
             if n >= number_of_vehicles:
