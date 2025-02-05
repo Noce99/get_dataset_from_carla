@@ -149,7 +149,7 @@ def run_all(args, where_to_save, carla_ue4_path, carla_log_path, sensors_json):
     tm_ready_to_take_data = multiprocessing.Event()
     dt_ready_to_warm_up = multiprocessing.Event()
     dt_ready_to_take_data = multiprocessing.Event()
-    starting_frame_num = multiprocessing.Value(c_int)
+    dt_want_to_stop_taking_data = multiprocessing.Event()
 
     traffic_manager_pid = multiprocessing.Value(c_int)
 
@@ -169,10 +169,9 @@ def run_all(args, where_to_save, carla_ue4_path, carla_log_path, sensors_json):
         tm_ready_to_take_data=tm_ready_to_take_data,
         dt_ready_to_warm_up=dt_ready_to_warm_up,
         dt_ready_to_take_data=dt_ready_to_take_data,
+        dt_want_to_stop_taking_data=dt_want_to_stop_taking_data,
         wait_a_little_bit_before_starting=sensors_json["wait_a_little_bit_before_start_ticking"],
-        warm_up_frames=sensors_json["number_of_warm_up_frames"],
-        frames_to_take=sensors_json["number_of_frames_to_take"],
-        starting_frame_num=starting_frame_num,
+        warm_up_frames=sensors_json["number_of_warm_up_frames"]
     )
 
     pids_to_be_killed.append(traffic_manager_pid.value)
@@ -193,9 +192,9 @@ def run_all(args, where_to_save, carla_ue4_path, carla_log_path, sensors_json):
                                                           finished_taking_data_event, where_to_save, sensors_json,
                                                           tm_ready_to_warm_up, tm_ready_to_take_data,
                                                           dt_ready_to_warm_up, dt_ready_to_take_data,
+                                                          dt_want_to_stop_taking_data,
                                                           sensors_json["number_of_warm_up_frames"],
-                                                          sensors_json["number_of_frames_to_take"],
-                                                          starting_frame_num,
+                                                          sensors_json["number_of_frames_to_take"]
                                                           ))
     data_creation_process.start()
     data_creation_pid.value = data_creation_process.pid

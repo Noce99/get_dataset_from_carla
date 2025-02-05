@@ -12,21 +12,7 @@ from ..utils import lidar_to_histogram_features
 from .events_representations import Histogram
 from .disparity_visualization import disp_to_rgb
 
-STARTING_FRAME = 10000
-TOTAL_NUM_OF_EVENTS = 0
-TOTAL_NUM_OF_EVENTS_STEP = 0
-
 class Callbacks:
-
-    @staticmethod
-    def set_starting_frame(starting_frame):
-        global STARTING_FRAME
-        STARTING_FRAME = starting_frame
-
-    @staticmethod
-    def average_num_of_events():
-        return TOTAL_NUM_OF_EVENTS / TOTAL_NUM_OF_EVENTS_STEP
-
     """
     # LIDAR callback
     @staticmethod
@@ -51,33 +37,30 @@ class Callbacks:
 
     # DEPTH callback
     @staticmethod
-    def depth_callback(data, disable_all_sensors, timestamp_dict, where_to_save):
-        if not disable_all_sensors:
-            raw_depth = np.reshape(np.copy(data.raw_data), (data.height, data.width, 4))
-            b = raw_depth[:, :, 0] / 256
-            g = raw_depth[:, :, 1] / 256
-            r = raw_depth[:, :, 2] / 256
-            depth = (r + g * 256 + b * 256 * 256) / (256 * 256 * 256 - 1)
-            m_depth = 1000 * depth * 256
+    def depth_callback(data, where_to_save):
+        raw_depth = np.reshape(np.copy(data.raw_data), (data.height, data.width, 4))
+        b = raw_depth[:, :, 0] / 256
+        g = raw_depth[:, :, 1] / 256
+        r = raw_depth[:, :, 2] / 256
+        depth = (r + g * 256 + b * 256 * 256) / (256 * 256 * 256 - 1)
+        m_depth = 1000 * depth * 256
 
-            focal_length = data.width / (2 * math.tan(data.fov * math.pi / 180 / 2))
-            disparity = 0.6 * focal_length / m_depth
-            disparity[m_depth == m_depth.max()] = 0
-            timestamp_dict[int(data.frame)] = int(data.timestamp*10**9)
-            cv2.imwrite(os.path.join(where_to_save, f"{data.frame:05d}.png"), disparity)
+        focal_length = data.width / (2 * math.tan(data.fov * math.pi / 180 / 2))
+        disparity = 0.6 * focal_length / m_depth
+        disparity[m_depth == m_depth.max()] = 0
+        cv2.imwrite(os.path.join(where_to_save, f"{data.frame:05d}.png"), disparity)
 
     @staticmethod
-    def event_callback(data, disable_all_sensors, data_list, starting_times):
-        if not disable_all_sensors:
-            x = np.array(data.to_array_x())
-            y = np.array(data.to_array_y())
-            t = np.array(data.to_array_t())
-            p = np.array(data.to_array_pol())
+    def event_callback(data, data_list, starting_times):
+        x = np.array(data.to_array_x())
+        y = np.array(data.to_array_y())
+        t = np.array(data.to_array_t())
+        p = np.array(data.to_array_pol())
 
-            data_list["x"][int(data.frame)] = x
-            data_list["y"][int(data.frame)] = y
-            data_list["t"][int(data.frame)] = t
-            data_list["p"][int(data.frame)] = p
+        data_list["x"][int(data.frame)] = x
+        data_list["y"][int(data.frame)] = y
+        data_list["t"][int(data.frame)] = t
+        data_list["p"][int(data.frame)] = p
 
-            if len(starting_times) == 0:
-                starting_times.append(t.min())
+        if len(starting_times) == 0:
+            starting_times.append(t.min())

@@ -20,15 +20,12 @@ from ..utils import NutException, color_error_string
 
 def take_data(carla_egg_path, rpc_port, ego_vehicle_found_event, finished_taking_data_event,
               where_to_save, sensors_json, tm_ready_to_warm_up, tm_ready_to_take_data, dt_ready_to_warm_up,
-              dt_ready_to_take_data, warm_up_frame, frames_to_take, starting_frame_num):
+              dt_ready_to_take_data, dt_want_to_stop_taking_data, warm_up_frames, frames_to_take):
     sys.path.append(carla_egg_path)
     try:
         import carla
     except:
         pass
-
-    disable_all_sensors = False # TODO: CHANGED!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    tick_obtained_from_sensor = {}
 
     # (1) Connect the client and set up bp library
     carla_tick = sensors_json["carla_tick"]
@@ -48,7 +45,6 @@ def take_data(carla_egg_path, rpc_port, ego_vehicle_found_event, finished_taking
                 break
         time.sleep(1)
     ego_vehicle_found_event.set()
-
 
     settings = world.get_settings()
     settings.synchronous_mode = True
@@ -80,14 +76,14 @@ def take_data(carla_egg_path, rpc_port, ego_vehicle_found_event, finished_taking
     # (5) Let's define some sensor Class
     class MyCarlaSensors(ABC):
         def __init__(self, sensor_cfg):
-            self.sensor_cfg = sensor_cfg
             self.friendly_name = sensor_cfg["friendly_name"]
             self.callback_function_name = sensor_cfg["callback"]
-            self.blue_print_name = sensor_cfg["blue_print_name"]
-            self.amount_of_frame_after_we_save = sensor_cfg["attributes"]["sensor_tick"] / carla_tick
-            print(f"{self.friendly_name} we save after {self.amount_of_frame_after_we_save:.2f} frames! [{1 / sensor_cfg['attributes']['sensor_tick']:.2f} fps]")
 
-            blue_print = bp_lib.find(self.blue_print_name)
+            amount_of_frame_after_we_save = sensor_cfg["attributes"]["sensor_tick"] / carla_tick
+            print(f"{self.friendly_name} we save after {amount_of_frame_after_we_save:.2f} frames!"
+                  f" [{1 / sensor_cfg['attributes']['sensor_tick']:.2f} fps]")
+
+            blue_print = bp_lib.find(sensor_cfg["blue_print_name"])
             attributes = sensor_cfg["attributes"]
             for attribute_name in attributes:
                 blue_print.set_attribute(attribute_name, str(attributes[attribute_name]))
@@ -95,25 +91,24 @@ def take_data(carla_egg_path, rpc_port, ego_vehicle_found_event, finished_taking
             transformation = carla.Transform(
                 carla.Location(x=location["x"], y=location["y"], z=location["z"]),
                 carla.Rotation(pitch=location["pitch"], roll=location["roll"], yaw=location["yaw"]))
+
             self.actor = world.spawn_actor(blue_print, transformation, attach_to=hero)
             self.actor.listen(lambda data: self.callback(data))
-            tick_obtained_from_sensor[sensor_cfg["friendly_name"]] = 0
             self.start_frame = None
-
-
-            """
-            if self.blue_print_name == "sensor.camera.dvs":
-                self.events = Events()
-            h5_file_name = sensor_cfg["h5_file_name"]
-            if h5_file_name[-3:] != ".h5":
-                h5_file_name += ".h5"
-            self.h5_file_path = os.path.join(where_to_save, h5_file_name)
-            self.data = []
-            """
+            self.last_frame = None
+            self.consecutive_frames = None
 
         @abstractmethod
         def callback(self, data):
-            pass
+            if self.last_frame is None:
+                self.last_frame = data.frame
+                self.consecutive_frames = 1
+            elif data.frame - self.last_frame == 1:
+                self.last_frame = data.frame
+                self.consecutive_frames += 1
+            else:
+                self.last_frame = data.frame
+                self.consecutive_frames = 1
 
         def shutdown(self):
             self.actor.stop()
@@ -133,49 +128,54 @@ def take_data(carla_egg_path, rpc_port, ego_vehicle_found_event, finished_taking
 
 
         def callback(self, data):
-            getattr(Callbacks, self.callback_function_name)(    data,
-                                                                disable_all_sensors,
-                                                                self.timestamp_dict,
-                                                                self.disparity_raw_folder_path
-                                                            )
+            getattr(Callbacks, self.callback_function_name)(
+                data,
+                self.disparity_raw_folder_path
+            )
+            # Let's save the timestamp in nanoseconds
+            self.timestamp_dict[int(data.frame)] = int(data.timestamp * 10 ** 9)
+            super().callback(data)
 
         def check_data(self):
-            print("Checking data and renaming file names...")
-            # Let's rename the frame name so they start from 0
+            print(f"[{self.friendly_name}] Checking that I have enough consecutive frames!")
+            if self.consecutive_frames < frames_to_take:
+                raise NutException(f"The sensor {self.friendly_name} has received {self.consecutive_frames} consecutive"
+                                   f" frames but we were asking {frames_to_take}!")
+            # Let's wait 5 seconds that all the files get correctly saved!
+            for _ in tqdm(range(5), desc=color_info_string(f"[{self.friendly_name}] "
+                                                           f"Wait 5 s that all the file get saved...")):
+                time.sleep(1)
+            # Let's get all the files names in the directory
             all_frames_file_name = {int(file_name[:-4]): file_name
-                                    for file_name in os.listdir(self.disparity_raw_folder_path) if file_name[-4:] == ".png"}
-            """
-            if len(all_frames_file_name) < frames_to_take:
-                # We need to take data again!
-                raise NutException(color_error_string(f"Some problem while getting al data. Something was lost!"
-                                                      f" [expecting Depth to have"
-                                                      f" {sensors_json['number_of_frames_to_take']}"
-                                                      f" but it has {len(all_frames_file_name)}]"))
-            """
+                                    for file_name in os.listdir(self.disparity_raw_folder_path)
+                                    if file_name[-4:] == ".png"}
             for i in range(self.start_frame, self.start_frame+frames_to_take):
+                # Let's check that the file is really there
                 try:
                     file_name = all_frames_file_name[i]
                 except KeyError:
                     error_str = f"Depth frame {i} is missing in {self.disparity_raw_folder_path}\n"
-                    for ii in range(self.start_frame, self.start_frame+frames_to_take):
-                        if abs(i-ii) < 10:
-                            error_str += "\t\t"
+                    for ii in range(max(i-10, self.start_frame),
+                                    min(i+10, self.start_frame+frames_to_take)):
                         if ii in all_frames_file_name.keys():
                             error_str += f"{ii} : {all_frames_file_name[ii]}\n"
                         else:
                             error_str += f"{ii} : MISSING\n"
-                    print(color_error_string(error_str))
-                    raise NutException(color_error_string("Missing a frame!"))
+                    raise NutException(color_error_string(error_str))
+                # Now we are sure that the file is there so we can move in the final official folder with a proper
+                # normalized name
                 os.rename(os.path.join(self.disparity_raw_folder_path, file_name),
                           os.path.join(self.disparity_folder_path, f"{i - self.start_frame:04d}.png"))
+                # We save also the timestamp of the frame
                 self.timestamps_to_save.append(self.timestamp_dict[i])
             return self.timestamps_to_save[0]
 
         def finalize(self, starting_time):
-            print("Saving Data Timestamps...")
+            # There we normalized the timestamps subtracting the starting time
+            print(f"[{self.friendly_name}]  Saving Data Timestamps...")
             for i in range(len(self.timestamps_to_save)):
                 self.timestamps_to_save[i] -= int(starting_time)
-
+            # Finally we save the timestamps file
             with open(os.path.join(where_to_save, "timestamps.json"), "w", encoding="utf-8") as json_timestamps_file:
                 json.dump(self.timestamps_to_save, json_timestamps_file, indent=4)
 
@@ -189,20 +189,20 @@ def take_data(carla_egg_path, rpc_port, ego_vehicle_found_event, finished_taking
                 "x": {}, "y": {}, "t": {}, "p": {}
             }
             self.starting_times = []
+            # A test to see if create_ms_to_index is correct!
             # example_t = np.array([0, 500, 2100, 5000, 5000, 5200, 7100, 7200, 7200, 8100, 8500, 9300])
             # self.create_ms_to_index(example_t, 10)
             self.data_to_save = None
 
         def callback(self, data):
             getattr(Callbacks, self.callback_function_name)(    data,
-                                                                disable_all_sensors,
                                                                 self.data,
                                                                 self.starting_times
                                                             )
+            super().callback(data)
 
         @staticmethod
         def create_ms_to_index(t, total_num_of_ms):
-
             ms_to_idx = np.zeros(total_num_of_ms, dtype=np.int64)
             last_idx = 0
             for i in range(total_num_of_ms):
@@ -221,34 +221,36 @@ def take_data(carla_egg_path, rpc_port, ego_vehicle_found_event, finished_taking
             return ms_to_idx
 
         def check_data(self):
-            print(f"Saving h5 file {self.friendly_name}...")
+            print(f"[{self.friendly_name}] Checking Data...")
             self.data_to_save = {
                 array_name: [] for array_name in self.data
             }
+            # We check that all the frames were there
             for i in range(self.start_frame, self.start_frame + frames_to_take):
                 for array_name in self.data_to_save :
                     try:
                         self.data_to_save[array_name].append(self.data[array_name][i])
-                        if array_name == "t":
-                            print(self.data[array_name][i].size)
                     except KeyError:
-                        error_str = f"Event frame {i} is missing\n"
-                        error_str += f"{self.data[array_name].keys()}"
-                        print(color_error_string(error_str))
-                        raise NutException(color_error_string("Missing a frame!"))
+                        error_str = f"[{self.friendly_name}] Frame {i} is missing\n"
+                        raise NutException(color_error_string(error_str))
+            # We concatenate all the data
             for array_name in self.data_to_save:
                 self.data_to_save[array_name] = np.concatenate(self.data_to_save[array_name])
-            print(f"NUM OF EVENTS: {self.data_to_save['t'].size}")
+
+            print(f"[{self.friendly_name}] I have got {self.data_to_save['t'].size} events in {frames_to_take} frames."
+                  f" [{self.data_to_save['t'].size/frames_to_take:.1f} events per frame]")
             return self.data_to_save["t"][0]
 
         def finalize(self, starting_time):
-            # We subtract the starting time:
+            # There we normalized the timestamps subtracting the starting time
             self.data_to_save["t"] -= starting_time
+            # We calculate the total number of ms
             total_num_of_ms = int(frames_to_take / (1/carla_tick) * 1000)
+            # We compute the ms_to_index vector
             ms_to_idx = self.create_ms_to_index(self.data_to_save["t"], total_num_of_ms)
 
+            # Finally we save the h5 file
             start = time.time()
-
             with h5py.File(self.h5_file_path, "w") as f:
                 for array_name in self.data_to_save:
                     f.create_dataset(array_name,
@@ -259,7 +261,7 @@ def take_data(carla_egg_path, rpc_port, ego_vehicle_found_event, finished_taking
                                  data=ms_to_idx,
                                  )
             time_needed = time.time() - start
-            print(f"Saved h5 file {self.friendly_name} in {time_needed}")
+            print(f"[{self.friendly_name}]  Saved h5 file in {time_needed:.2f} s!")
 
 
     sensors = []
@@ -280,43 +282,58 @@ def take_data(carla_egg_path, rpc_port, ego_vehicle_found_event, finished_taking
 
     signal.signal(signal.SIGINT, ctrl_c)
 
-    # Warm Up there
+    # We check that we are ready to warm up
     while True:
         if tm_ready_to_warm_up.is_set():
             break
-    possible_start_frame = None
     dt_ready_to_warm_up.set()
-    with tqdm(range(warm_up_frame), desc=color_info_string("Warming Up...")) as pbar:
+    # We wait that carla warms up
+    with tqdm(range(warm_up_frames), desc=color_info_string("Warming Up...")) as pbar:
         while True:
             try:
-                possible_start_frame = world.wait_for_tick(seconds=1).frame
+                world.wait_for_tick(seconds=1).frame
             except RuntimeError:
                 if tm_ready_to_take_data.is_set():
                     break
             pbar.update(1)
 
-    official_start_frame = possible_start_frame + 10
+    # We say that we are ready to take data
+    dt_ready_to_take_data.set()
+    for _ in tqdm(range(frames_to_take+50), desc=color_info_string("Take Data...")):
+        world.wait_for_tick()
+
+    finish_frame = world.wait_for_tick().frame
+    official_start_frame = finish_frame - 25 - frames_to_take
+    dt_want_to_stop_taking_data.set()
+
+    # Let's wait that all callbacks has been executed
+    with tqdm(range(frames_to_take+25), desc=color_info_string("Waiting that all callbacks complete...")) as pbar:
+        while True:
+            sensors_consecutive_frames = [sensor.consecutive_frames for sensor in sensors
+                                          if sensor.consecutive_frames is not None]
+            all_sensors_enough_consecutive_frames = True
+            for cf in sensors_consecutive_frames:
+                if cf < frames_to_take + 25:
+                    all_sensors_enough_consecutive_frames = False
+
+            pbar.n = min(sensors_consecutive_frames)
+
+            if all_sensors_enough_consecutive_frames:
+                break
+
+
+    # We communicate the starting frame to all the sensors
     for sensor in sensors:
         sensor.start_frame = official_start_frame
-    print(f"START FRAME = {official_start_frame}")
 
-    dt_ready_to_take_data.set()
-    with tqdm(range(frames_to_take*2), desc=color_info_string("Take Data...")) as pbar:
-        while True:
-            try:
-                world.wait_for_tick(seconds=5)
-            except RuntimeError:
-                break
-            pbar.update(1)
-    time.sleep(20)
-    disable_all_sensors = True
+    # Now we check the data, and we get from sensor their first real data time
     starting_times = []
     for sensor in sensors:
         starting_times.append(sensor.check_data())
-    print(starting_times)
-    real_starting_time = min(starting_times)
+
+    # We get the minimum starting time, and we put that as the official starting time
+    official_starting_time = min(starting_times)
     for sensor in sensors:
-        sensor.finalize(real_starting_time)
+        sensor.finalize(official_starting_time)
     finished_taking_data_event.set()
-    # print(f"Average number of events: {Callbacks.average_num_of_events():.2f}")
 
