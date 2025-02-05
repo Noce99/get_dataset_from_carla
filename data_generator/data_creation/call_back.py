@@ -51,9 +51,8 @@ class Callbacks:
 
     # DEPTH callback
     @staticmethod
-    def depth_callback(data, disable_all_sensors, data_list):
+    def depth_callback(data, disable_all_sensors, timestamp_dict, where_to_save):
         if not disable_all_sensors:
-            import carla
             raw_depth = np.reshape(np.copy(data.raw_data), (data.height, data.width, 4))
             b = raw_depth[:, :, 0] / 256
             g = raw_depth[:, :, 1] / 256
@@ -61,29 +60,24 @@ class Callbacks:
             depth = (r + g * 256 + b * 256 * 256) / (256 * 256 * 256 - 1)
             m_depth = 1000 * depth * 256
 
-            # saved_frame = data.frame - STARTING_FRAME
-
             focal_length = data.width / (2 * math.tan(data.fov * math.pi / 180 / 2))
             disparity = 0.6 * focal_length / m_depth
             disparity[m_depth == m_depth.max()] = 0
-            data_list.append(disparity)
-            # cv2.imwrite(os.path.join("/home/enrico/Downloads", f"{saved_frame}.png"), disparity*3)
+            timestamp_dict[int(data.frame)] = int(data.timestamp*10**9)
+            cv2.imwrite(os.path.join(where_to_save, f"{data.frame:05d}.png"), disparity)
 
     @staticmethod
-    def event_callback(data, disable_all_sensors, data_list):
+    def event_callback(data, disable_all_sensors, data_list, starting_times):
         if not disable_all_sensors:
             x = np.array(data.to_array_x())
             y = np.array(data.to_array_y())
             t = np.array(data.to_array_t())
-            pol = np.array(data.to_array_pol())
-            histo = Histogram(height=data.height, width=data.width, normalize=False)
-            representation = histo.convert(torch.from_numpy(x),
-                                           torch.from_numpy(y),
-                                           torch.from_numpy(pol),
-                                           torch.from_numpy(t))
-            global TOTAL_NUM_OF_EVENTS, TOTAL_NUM_OF_EVENTS_STEP
-            TOTAL_NUM_OF_EVENTS += x.shape[0]
-            TOTAL_NUM_OF_EVENTS_STEP += 1
-            # saved_frame = (data.frame - STARTING_FRAME)
-            data_list.append(representation.numpy())
-            # cv2.imwrite(os.path.join(where_to_save, f"{saved_frame}.png"), histo.to_rgb_mono(representation))
+            p = np.array(data.to_array_pol())
+
+            data_list["x"][int(data.frame)] = x
+            data_list["y"][int(data.frame)] = y
+            data_list["t"][int(data.frame)] = t
+            data_list["p"][int(data.frame)] = p
+
+            if len(starting_times) == 0:
+                starting_times.append(t.min())

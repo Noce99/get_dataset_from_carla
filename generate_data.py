@@ -13,7 +13,6 @@ import shutil
 from data_generator.data_creation import take_data
 from data_generator import utils
 from data_generator import config
-from datetime import datetime
 from data_generator.carla_interface import add_carla_to_python_path, \
     launch_carla_server_and_wait_till_its_up, \
     set_up_world_and_wait_till_its_set_up, \
@@ -146,7 +145,14 @@ def run_all(args, where_to_save, carla_ue4_path, carla_log_path, sensors_json):
     print(utils.color_info_string("(2/3)\tWorld was correctly set up!"))
 
     # (4) SET UP TRAFFIC MANAGER
+    tm_ready_to_warm_up = multiprocessing.Event()
+    tm_ready_to_take_data = multiprocessing.Event()
+    dt_ready_to_warm_up = multiprocessing.Event()
+    dt_ready_to_take_data = multiprocessing.Event()
+    starting_frame_num = multiprocessing.Value(c_int)
+
     traffic_manager_pid = multiprocessing.Value(c_int)
+
     carla_is_ok, \
     traffic_manager_is_ok, \
     traffic_manager_is_up, \
@@ -158,7 +164,15 @@ def run_all(args, where_to_save, carla_ue4_path, carla_log_path, sensors_json):
         number_of_walkers=args.num_of_walkers,
         carla_server_pid=carla_server_pid,
         traffic_manager_pid=traffic_manager_pid,
-        logs_path=traffic_manager_log_path
+        logs_path=traffic_manager_log_path,
+        tm_ready_to_warm_up=tm_ready_to_warm_up,
+        tm_ready_to_take_data=tm_ready_to_take_data,
+        dt_ready_to_warm_up=dt_ready_to_warm_up,
+        dt_ready_to_take_data=dt_ready_to_take_data,
+        wait_a_little_bit_before_starting=sensors_json["wait_a_little_bit_before_start_ticking"],
+        warm_up_frames=sensors_json["number_of_warm_up_frames"],
+        frames_to_take=sensors_json["number_of_frames_to_take"],
+        starting_frame_num=starting_frame_num,
     )
 
     pids_to_be_killed.append(traffic_manager_pid.value)
@@ -176,7 +190,13 @@ def run_all(args, where_to_save, carla_ue4_path, carla_log_path, sensors_json):
     finished_taking_data_event = multiprocessing.Event()
     data_creation_process = multiprocessing.Process(target=take_data.take_data,
                                                     args=(egg_file_path, args.rpc_port,ego_vehicle_found_event,
-                                                          finished_taking_data_event, where_to_save, sensors_json))
+                                                          finished_taking_data_event, where_to_save, sensors_json,
+                                                          tm_ready_to_warm_up, tm_ready_to_take_data,
+                                                          dt_ready_to_warm_up, dt_ready_to_take_data,
+                                                          sensors_json["number_of_warm_up_frames"],
+                                                          sensors_json["number_of_frames_to_take"],
+                                                          starting_frame_num,
+                                                          ))
     data_creation_process.start()
     data_creation_pid.value = data_creation_process.pid
     pids_to_be_killed.append(data_creation_pid.value)

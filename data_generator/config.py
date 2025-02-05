@@ -6,7 +6,7 @@ import datetime
 # VALIDATION_DATASET_PATH = "/home/enrico/Downloads/nut_dataset_old/nut_dataset_test"
 
 # TAKE DATA
-MAX_NUM_OF_ATTEMPTS = 10  # maximum number of attempts to start up all the carla's chain!
+MAX_NUM_OF_ATTEMPTS = 100  # maximum number of attempts to start up all the carla's chain!
 CARLA_FPS = 100
 IMAGE_W = 1024
 IMAGE_H = 256

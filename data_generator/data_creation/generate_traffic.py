@@ -31,7 +31,10 @@ def get_actor_blueprints(world, filter, generation):
         print("   Warning! Actor Generation is not valid. No actor will be spawned.")
         return []
 
-def generate_traffic(carla_ip, rpc_port, tm_port, number_of_vehicles, number_of_walkers, traffic_manager_is_up, logs_path, hero=True):
+def generate_traffic(carla_ip, rpc_port, tm_port, number_of_vehicles, number_of_walkers, traffic_manager_is_up, logs_path,
+                     tm_ready_to_warm_up, tm_ready_to_take_data, dt_ready_to_warm_up, dt_ready_to_take_data,
+                     wait_a_little_bit_before_starting, warm_up_frames, frames_to_take, starting_frame_num,
+                     hero=True):
     try:
         import carla
     except:
@@ -233,12 +236,36 @@ def generate_traffic(carla_ip, rpc_port, tm_port, number_of_vehicles, number_of_
                 hero_actor = vehicle
                 break
 
+        # Pre-Warm UP
+        for i in range(100):
+            world.tick()
+
+        tm_ready_to_warm_up.set()
         while True:
+            if dt_ready_to_warm_up.is_set():
+                break
+        time.sleep(wait_a_little_bit_before_starting)
+        frame_id = None
+        for i in range(warm_up_frames):
+            frame_id = world.tick()
+            hero_transform = hero_actor.get_transform()
+            hero_transform.location.z += 30
+            hero_transform.rotation.pitch = -90.
+            world.get_spectator().set_transform(hero_transform)
+        starting_frame_num.value = frame_id + 1
+        tm_ready_to_take_data.set()
+        while True:
+            if dt_ready_to_take_data.is_set():
+                break
+        time.sleep(wait_a_little_bit_before_starting)
+        for i in range(frames_to_take*2):
             world.tick()
             hero_transform = hero_actor.get_transform()
             hero_transform.location.z += 30
             hero_transform.rotation.pitch = -90.
             world.get_spectator().set_transform(hero_transform)
+        while True:
+            pass
     finally:
         settings = world.get_settings()
         settings.synchronous_mode = False

@@ -7,7 +7,7 @@ def get_a_random_weather():
     cloudiness = random.betavariate(alpha=1, beta=4) * 30 # 100
     precipitation = random.betavariate(alpha=1.5, beta=5) * 20 # 100
     wind_intensity = random.betavariate(alpha=2, beta=2) * 100
-    sun_altitude_angle = random.uniform(40, 140) # random.uniform(-90, 90) wrong? should be -180; 180
+    sun_altitude_angle = random.uniform(-90, 90)
     fog_density = random.betavariate(alpha=1, beta=4) * 100
 
     a_weather = carla.WeatherParameters(

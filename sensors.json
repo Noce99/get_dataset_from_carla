@@ -1,6 +1,8 @@
 {
   "carla_tick": 0.01,
-  "number_of_frames_to_take": 1000,
+  "number_of_warm_up_frames": 100,
+  "number_of_frames_to_take": 300,
+  "wait_a_little_bit_before_start_ticking": 2,
   "sensors": [
     {
       "friendly_name": "Depth",
@@ -19,8 +21,6 @@
         "roll": 0.0,
         "yaw": 0.0
       },
-      "h5_file_name": "disparity",
-      "h5_frame_shape": [480, 640],
       "callback": "depth_callback"
     },
     {
@@ -42,8 +42,6 @@
         "roll": 0.0,
         "yaw": 0.0
       },
-      "h5_file_name": "event_left",
-      "h5_frame_shape": [2, 480, 640],
       "callback": "event_callback"
     },
     {
@@ -65,8 +63,6 @@
         "roll": 0.0,
         "yaw": 0.0
       },
-      "h5_file_name": "event_right",
-      "h5_frame_shape": [2, 480, 640],
       "callback": "event_callback"
     }
   ]

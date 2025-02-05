@@ -155,12 +155,20 @@ def set_up_world_and_wait_till_its_set_up(carla_ip:str, rpc_port:int, town_numbe
 def set_up_traffic_manager_and_wait_till_its_up(carla_ip:str, rpc_port:int, tm_port:int,
                                                 number_of_vehicles:int, number_of_walkers:int,
                                                 carla_server_pid:shared_ctype, traffic_manager_pid:shared_ctype,
-                                                logs_path:str, hero:bool=True):
+                                                logs_path:str, tm_ready_to_warm_up, tm_ready_to_take_data,
+                                                dt_ready_to_warm_up, dt_ready_to_take_data,
+                                                wait_a_little_bit_before_starting:int, warm_up_frames:int,
+                                                frames_to_take:int, starting_frame_num:shared_ctype, hero:bool=True):
     traffic_manager_is_up = multiprocessing.Event()
     set_up_traffic_manager_process = multiprocessing.Process(target=generate_traffic,
                                                              args=(carla_ip, rpc_port, tm_port, number_of_vehicles,
                                                                    number_of_walkers, traffic_manager_is_up,
-                                                                   logs_path, hero))
+                                                                   logs_path, tm_ready_to_warm_up,
+                                                                   tm_ready_to_take_data, dt_ready_to_warm_up,
+                                                                   dt_ready_to_take_data,
+                                                                   wait_a_little_bit_before_starting,
+                                                                   warm_up_frames, frames_to_take, starting_frame_num,
+                                                                   hero))
     set_up_traffic_manager_process.start()
 
     traffic_manager_pid.value = set_up_traffic_manager_process.pid

@@ -21,12 +21,20 @@ def get_arguments():
     return arg_parser.parse_args()
 
 def read_a_sequence(sequence_folder_path: str):
-    if not (os.path.isfile(os.path.join(sequence_folder_path, "disparity.h5")) and
-            os.path.isfile(os.path.join(sequence_folder_path, "event_left.h5")) and
-            os.path.isfile(os.path.join(sequence_folder_path, "event_right.h5"))):
-        raise Exception(f"The dataset folder path [{sequence_folder_path}] does not contain one of the following files:"
-                        f" disparity.h5, event_left.h5, event_right.h5!")
+    if not (os.path.isdir(os.path.join(sequence_folder_path, "disparity")) and
+            os.path.isfile(os.path.join(sequence_folder_path, "left.h5")) and
+            os.path.isfile(os.path.join(sequence_folder_path, "right.h5")) and
+            os.path.isfile(os.path.join(sequence_folder_path, "timestamps.json"))):
+        raise Exception(f"The dataset folder path [{sequence_folder_path}] does not contain one of the following"
+                        f" folder/files: disparity, left.h5, right.h5, timestamps.json!")
     start = time()
+    with h5py.File(os.path.join(sequence_folder_path, "left.h5"), "r") as h5file:
+        left = h5file["pol"][:]
+        print(left[:200])
+
+
+
+    """
     with h5py.File(os.path.join(sequence_folder_path, "disparity.h5"), "r") as h5file:
         disparity_dataset = h5file["dataset"][:]
     with h5py.File(os.path.join(sequence_folder_path, "event_left.h5"), "r") as h5file:
@@ -50,24 +58,27 @@ def read_a_sequence(sequence_folder_path: str):
         cv2.waitKey(1)
     cv2.destroyAllWindows()
     print("Finished to show images!")
+    """
 
 if __name__ == '__main__':
-    my_args = get_arguments()
-    if not (os.path.isdir(my_args.path)):
-        raise Exception(f"The dataset folder path [{my_args.path}] does not exist!")
-    sequences = {int(a_dir):a_dir for a_dir in os.listdir(my_args.path)}
-    sequences_min = min(list(sequences.keys()))
-    sequences_max = max(list(sequences.keys()))
-    while True:
-        selected_sequence = input(f"Please select a sequence in [{sequences_min}; {sequences_max}]: ")
-        if selected_sequence.lower() == "all":
-            for sequence in sequences:
-                read_a_sequence(os.path.join(my_args.path, sequences[sequence]))
-        try:
-            selected_sequence = int(selected_sequence)
-        except ValueError:
-            continue
-        if not selected_sequence in sequences.keys():
-            continue
-        sequence_folder = os.path.join(my_args.path, sequences[selected_sequence])
-        read_a_sequence(sequence_folder)
+    def a_test():
+        my_args = get_arguments()
+        if not (os.path.isdir(my_args.path)):
+            raise Exception(f"The dataset folder path [{my_args.path}] does not exist!")
+        sequences = {int(a_dir):a_dir for a_dir in os.listdir(my_args.path)}
+        sequences_min = min(list(sequences.keys()))
+        sequences_max = max(list(sequences.keys()))
+        while True:
+            selected_sequence = input(f"Please select a sequence in [{sequences_min}; {sequences_max}]: ")
+            if selected_sequence.lower() == "all":
+                for sequence in sequences:
+                    read_a_sequence(os.path.join(my_args.path, sequences[sequence]))
+            try:
+                selected_sequence = int(selected_sequence)
+            except ValueError:
+                continue
+            if not selected_sequence in sequences.keys():
+                continue
+            sequence_folder = os.path.join(my_args.path, sequences[selected_sequence])
+            read_a_sequence(sequence_folder)
+    a_test()
