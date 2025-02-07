@@ -8,8 +8,7 @@ do
   --num_of_vehicle 0 \
   --num_of_walkers 0 \
   --dataset_path /media/enrico/Enrico_Datasets/carla_events/"$current_data" \
-  --sequence_id "$i" \
-  --show_carla_window
+  --sequence_id "$i"
   exit_code=$?
   if [ $exit_code -eq 99 ]; then
     exit 0

@@ -4,6 +4,7 @@ import signal
 import time
 from abc import ABC, abstractmethod
 import json
+import shutil
 
 import h5py
 import numpy
@@ -79,8 +80,8 @@ def take_data(carla_egg_path, rpc_port, ego_vehicle_found_event, finished_taking
             self.friendly_name = sensor_cfg["friendly_name"]
             self.callback_function_name = sensor_cfg["callback"]
 
-            amount_of_frame_after_we_save = sensor_cfg["attributes"]["sensor_tick"] / carla_tick
-            print(f"{self.friendly_name} we save after {amount_of_frame_after_we_save:.2f} frames!"
+            self.amount_of_frame_after_we_save = int(sensor_cfg["attributes"]["sensor_tick"] / carla_tick)
+            print(f"{self.friendly_name} we save after {self.amount_of_frame_after_we_save:.2f} frames!"
                   f" [{1 / sensor_cfg['attributes']['sensor_tick']:.2f} fps]")
 
             blue_print = bp_lib.find(sensor_cfg["blue_print_name"])
@@ -97,13 +98,16 @@ def take_data(carla_egg_path, rpc_port, ego_vehicle_found_event, finished_taking
             self.start_frame = None
             self.last_frame = None
             self.consecutive_frames = None
+            self.frames_to_take = int(frames_to_take /
+                                      (sensor_cfg["attributes"]["sensor_tick"] / sensors_json["carla_tick"]))
+            self.check_result = sensor_cfg["check_result"]
 
         @abstractmethod
         def callback(self, data):
             if self.last_frame is None:
                 self.last_frame = data.frame
                 self.consecutive_frames = 1
-            elif data.frame - self.last_frame == 1:
+            elif data.frame - self.last_frame == self.amount_of_frame_after_we_save:
                 self.last_frame = data.frame
                 self.consecutive_frames += 1
             else:
@@ -119,65 +123,75 @@ def take_data(carla_egg_path, rpc_port, ego_vehicle_found_event, finished_taking
             super().__init__(sensor_cfg)
             self.timestamp_dict = {}
 
-            self.disparity_folder_path = os.path.join(where_to_save, "disparity")
-            os.mkdir(self.disparity_folder_path)
-            self.disparity_raw_folder_path = os.path.join(where_to_save, "disparity_raw")
-            os.mkdir(self.disparity_raw_folder_path)
+            if self.check_result:
+                self.data_folder_path = os.path.join(where_to_save, sensor_cfg["data_folder_name"])
+                os.mkdir(self.data_folder_path)
+            self.raw_data_folder_path = os.path.join(where_to_save, "raw_" + sensor_cfg["data_folder_name"])
+            os.mkdir(self.raw_data_folder_path)
+            self.timestamps_path = os.path.join(where_to_save, f"{self.friendly_name}_timestamps.json")
 
             self.timestamps_to_save = []
+            self.save_timestamps = sensor_cfg["save_timestamps"]
 
 
         def callback(self, data):
             getattr(Callbacks, self.callback_function_name)(
                 data,
-                self.disparity_raw_folder_path
+                self.raw_data_folder_path
             )
             # Let's save the timestamp in nanoseconds
             self.timestamp_dict[int(data.frame)] = int(data.timestamp * 10 ** 9)
             super().callback(data)
 
         def check_data(self):
-            print(f"[{self.friendly_name}] Checking that I have enough consecutive frames!")
-            if self.consecutive_frames < frames_to_take:
-                raise NutException(f"The sensor {self.friendly_name} has received {self.consecutive_frames} consecutive"
-                                   f" frames but we were asking {frames_to_take}!")
-            # Let's wait 5 seconds that all the files get correctly saved!
-            for _ in tqdm(range(5), desc=color_info_string(f"[{self.friendly_name}] "
-                                                           f"Wait 5 s that all the file get saved...")):
-                time.sleep(1)
-            # Let's get all the files names in the directory
-            all_frames_file_name = {int(file_name[:-4]): file_name
-                                    for file_name in os.listdir(self.disparity_raw_folder_path)
-                                    if file_name[-4:] == ".png"}
-            for i in range(self.start_frame, self.start_frame+frames_to_take):
-                # Let's check that the file is really there
-                try:
-                    file_name = all_frames_file_name[i]
-                except KeyError:
-                    error_str = f"Depth frame {i} is missing in {self.disparity_raw_folder_path}\n"
-                    for ii in range(max(i-10, self.start_frame),
-                                    min(i+10, self.start_frame+frames_to_take)):
-                        if ii in all_frames_file_name.keys():
-                            error_str += f"{ii} : {all_frames_file_name[ii]}\n"
-                        else:
-                            error_str += f"{ii} : MISSING\n"
-                    raise NutException(color_error_string(error_str))
-                # Now we are sure that the file is there so we can move in the final official folder with a proper
-                # normalized name
-                os.rename(os.path.join(self.disparity_raw_folder_path, file_name),
-                          os.path.join(self.disparity_folder_path, f"{i - self.start_frame:04d}.png"))
-                # We save also the timestamp of the frame
-                self.timestamps_to_save.append(self.timestamp_dict[i])
-            return self.timestamps_to_save[0]
+            if self.check_result:
+                print(f"[{self.friendly_name}] Checking that I have enough consecutive frames!")
+                if self.consecutive_frames < self.frames_to_take:
+                    raise NutException(f"The sensor {self.friendly_name} has received {self.consecutive_frames} consecutive"
+                                       f" frames but we were asking {self.frames_to_take}!")
+                # Let's wait 5 seconds that all the files get correctly saved!
+                for _ in tqdm(range(5), desc=color_info_string(f"[{self.friendly_name}] "
+                                                               f"Wait 5 s that all the file get saved...")):
+                    time.sleep(1)
+                # Let's get all the files names in the directory
+                all_frames_file_name = {int(file_name[:-4]): file_name
+                                        for file_name in os.listdir(str(self.raw_data_folder_path))
+                                        if file_name[-4:] == ".png"}
+                for i in range(self.start_frame, self.start_frame+frames_to_take, self.amount_of_frame_after_we_save):
+                    # Let's check that the file is really there
+                    try:
+                        file_name = all_frames_file_name[i]
+                    except KeyError:
+                        error_str = f"Frame {i} is missing in {self.raw_data_folder_path}\n"
+                        for ii in range(max(i-10*self.amount_of_frame_after_we_save, self.start_frame),
+                                        min(i+10*self.amount_of_frame_after_we_save, self.start_frame+frames_to_take),
+                                        self.amount_of_frame_after_we_save):
+                            if ii in all_frames_file_name.keys():
+                                error_str += f"{ii} : {all_frames_file_name[ii]}\n"
+                            else:
+                                error_str += f"{ii} : MISSING\n"
+                        raise NutException(color_error_string(error_str))
+                    # Now we are sure that the file is there so we can move in the final official folder with a proper
+                    # normalized name
+                    os.rename(os.path.join(str(self.raw_data_folder_path), file_name),
+                              os.path.join(str(self.data_folder_path), f"{i - self.start_frame:04d}.png"))
+                    # We save also the timestamp of the frame
+                    self.timestamps_to_save.append(self.timestamp_dict[i])
+                # Now we can remove the raw_ folder
+                shutil.rmtree(self.raw_data_folder_path)
+                return self.timestamps_to_save[0]
+            else:
+                return None
 
         def finalize(self, starting_time):
-            # There we normalized the timestamps subtracting the starting time
-            print(f"[{self.friendly_name}]  Saving Data Timestamps...")
-            for i in range(len(self.timestamps_to_save)):
-                self.timestamps_to_save[i] -= int(starting_time)
-            # Finally we save the timestamps file
-            with open(os.path.join(where_to_save, "timestamps.json"), "w", encoding="utf-8") as json_timestamps_file:
-                json.dump(self.timestamps_to_save, json_timestamps_file, indent=4)
+            if self.save_timestamps:
+                # There we normalized the timestamps subtracting the starting time
+                print(f"[{self.friendly_name}]  Saving Data Timestamps...")
+                for i in range(len(self.timestamps_to_save)):
+                    self.timestamps_to_save[i] -= int(starting_time)
+                # Finally we save the timestamps file
+                with open(os.path.join(where_to_save, "timestamps.json"), "w", encoding="utf-8") as json_timestamps_file:
+                    json.dump(self.timestamps_to_save, json_timestamps_file, indent=4)
 
     class EventSensor(MyCarlaSensors):
         def __init__(self, sensor_cfg, left_right: str):
@@ -226,7 +240,8 @@ def take_data(carla_egg_path, rpc_port, ego_vehicle_found_event, finished_taking
                 array_name: [] for array_name in self.data
             }
             # We check that all the frames were there
-            for i in range(self.start_frame, self.start_frame + frames_to_take):
+            # Plus and minus  2 because are events we want a little bit of margin
+            for i in range(self.start_frame - 5, self.start_frame + self.frames_to_take + 5):
                 for array_name in self.data_to_save :
                     try:
                         self.data_to_save[array_name].append(self.data[array_name][i])
@@ -237,17 +252,17 @@ def take_data(carla_egg_path, rpc_port, ego_vehicle_found_event, finished_taking
             for array_name in self.data_to_save:
                 self.data_to_save[array_name] = np.concatenate(self.data_to_save[array_name])
 
-            print(f"[{self.friendly_name}] I have got {self.data_to_save['t'].size} events in {frames_to_take} frames."
-                  f" [{self.data_to_save['t'].size/frames_to_take:.1f} events per frame]")
+            print(f"[{self.friendly_name}] I have got {self.data_to_save['t'].size} events in {self.frames_to_take} frames."
+                  f" [{self.data_to_save['t'].size/self.frames_to_take:.1f} events per frame]")
             return self.data_to_save["t"][0]
 
         def finalize(self, starting_time):
             # There we normalized the timestamps subtracting the starting time
             self.data_to_save["t"] -= starting_time
             # We calculate the total number of ms
-            total_num_of_ms = int(frames_to_take / (1/carla_tick) * 1000)
+            total_num_of_ms = int(self.frames_to_take / (1/carla_tick) * 1000)
             # We compute the ms_to_index vector
-            ms_to_idx = self.create_ms_to_index(self.data_to_save["t"], total_num_of_ms)
+            ms_to_idx = self.create_ms_to_index(self.data_to_save["t"], total_num_of_ms+70)
 
             # Finally we save the h5 file
             start = time.time()
@@ -266,7 +281,7 @@ def take_data(carla_egg_path, rpc_port, ego_vehicle_found_event, finished_taking
 
     sensors = []
     for sensor in sensors_json["sensors"]:
-        if sensor["blue_print_name"] == "sensor.camera.depth":
+        if sensor["blue_print_name"] in ["sensor.camera.depth", "sensor.camera.rgb"]:
             sensors.append(PngSensor(sensor))
         elif sensor["blue_print_name"] == "sensor.camera.dvs":
             if "Left" in sensor["friendly_name"]:
@@ -307,20 +322,15 @@ def take_data(carla_egg_path, rpc_port, ego_vehicle_found_event, finished_taking
     dt_want_to_stop_taking_data.set()
 
     # Let's wait that all callbacks has been executed
-    with tqdm(range(frames_to_take+25), desc=color_info_string("Waiting that all callbacks complete...")) as pbar:
-        while True:
-            sensors_consecutive_frames = [sensor.consecutive_frames for sensor in sensors
-                                          if sensor.consecutive_frames is not None]
-            all_sensors_enough_consecutive_frames = True
-            for cf in sensors_consecutive_frames:
-                if cf < frames_to_take + 25:
-                    all_sensors_enough_consecutive_frames = False
-
-            pbar.n = min(sensors_consecutive_frames)
-
-            if all_sensors_enough_consecutive_frames:
-                break
-
+    print(color_info_string("Waiting that all callbacks complete..."))
+    for sensor in sensors:
+        if sensor.check_result:
+            with tqdm(range(int(sensor.frames_to_take+0.1*sensor.frames_to_take)),
+                      desc=color_info_string(sensor.friendly_name)) as pbar:
+                while True:
+                    pbar.n = sensor.consecutive_frames
+                    if sensor.consecutive_frames > int(sensor.frames_to_take + 0.1*sensor.frames_to_take):
+                        break
 
     # We communicate the starting frame to all the sensors
     for sensor in sensors:
@@ -329,7 +339,9 @@ def take_data(carla_egg_path, rpc_port, ego_vehicle_found_event, finished_taking
     # Now we check the data, and we get from sensor their first real data time
     starting_times = []
     for sensor in sensors:
-        starting_times.append(sensor.check_data())
+        starting_time = sensor.check_data()
+        if starting_time is not None:
+            starting_times.append(starting_time)
 
     # We get the minimum starting time, and we put that as the official starting time
     official_starting_time = min(starting_times)

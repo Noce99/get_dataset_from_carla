@@ -21,7 +21,32 @@
         "roll": 0.0,
         "yaw": 0.0
       },
-      "callback": "depth_callback"
+      "callback": "depth_callback",
+      "data_folder_name": "disparity",
+      "check_result": true,
+      "save_timestamps": true
+    },
+    {
+      "friendly_name": "RGB",
+      "blue_print_name": "sensor.camera.rgb",
+      "attributes": {
+        "fov": 90,
+        "image_size_x": 640,
+        "image_size_y": 480,
+        "sensor_tick": 0.1
+      },
+      "location": {
+        "x": 1.0,
+        "y": -0.3,
+        "z": 2.0,
+        "pitch": 0.0,
+        "roll": 0.0,
+        "yaw": 0.0
+      },
+      "callback": "rgb_callback",
+      "data_folder_name": "rgb",
+      "check_result": false,
+      "save_timestamps": false
     },
     {
       "friendly_name": "Event_Left",
@@ -42,7 +67,8 @@
         "roll": 0.0,
         "yaw": 0.0
       },
-      "callback": "event_callback"
+      "callback": "event_callback",
+      "check_result": true
     },
     {
       "friendly_name": "Event_Right",
@@ -63,7 +89,8 @@
         "roll": 0.0,
         "yaw": 0.0
       },
-      "callback": "event_callback"
+      "callback": "event_callback",
+      "check_result": true
     }
   ]
 }

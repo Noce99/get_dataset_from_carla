@@ -50,6 +50,13 @@ class Callbacks:
         disparity[m_depth == m_depth.max()] = 0
         cv2.imwrite(os.path.join(where_to_save, f"{data.frame:05d}.png"), disparity)
 
+    # RGB callback
+    @staticmethod
+    def rgb_callback(data, where_to_save):
+        raw_rgb = np.reshape(np.copy(data.raw_data), (data.height, data.width, 4))
+        cv2.imwrite(os.path.join(where_to_save, f"{data.frame:05d}.png"), raw_rgb)
+
+
     @staticmethod
     def event_callback(data, data_list, starting_times):
         x = np.array(data.to_array_x())
