@@ -74,9 +74,9 @@ def generate_traffic(carla_ip, rpc_port, tm_port, number_of_vehicles, number_of_
         traffic_manager.set_hybrid_physics_mode(True)
         traffic_manager.set_hybrid_physics_radius(70.0)
 
-
+        """
         settings = world.get_settings()
-        traffic_manager.set_synchronous_mode(True)
+        # traffic_manager.set_synchronous_mode(True)
         if not settings.synchronous_mode:
             synchronous_master = True
             settings.synchronous_mode = True
@@ -118,8 +118,9 @@ def generate_traffic(carla_ip, rpc_port, tm_port, number_of_vehicles, number_of_
             blueprint = world.get_blueprint_library().find('vehicle.ford.mustang')
             blueprint.set_attribute('color', blueprint.get_attribute('color').recommended_values[0])
             blueprint.set_attribute('role_name', 'hero')
-            batch.append(SpawnActor(blueprint, spawn_points[random.randint(0, len(spawn_points) - 1)])
-                .then(SetAutopilot(FutureActor, True, traffic_manager.get_port())))
+            #batch.append(SpawnActor(blueprint, spawn_points[random.randint(0, len(spawn_points) - 1)])
+            #    .then(SetAutopilot(FutureActor, True, traffic_manager.get_port())))
+            batch.append(SpawnActor(blueprint, spawn_points[random.randint(0, len(spawn_points) - 1)]))
         for n, transform in enumerate(spawn_points[:]):
             if n >= number_of_vehicles:
                 break
@@ -133,8 +134,9 @@ def generate_traffic(carla_ip, rpc_port, tm_port, number_of_vehicles, number_of_
             blueprint.set_attribute('role_name', 'autopilot')
 
             # spawn the cars and set their autopilot and light state all together
-            batch.append(SpawnActor(blueprint, transform)
-                .then(SetAutopilot(FutureActor, True, traffic_manager.get_port())))
+            # batch.append(SpawnActor(blueprint, transform)
+            #    .then(SetAutopilot(FutureActor, True, traffic_manager.get_port())))
+            batch.append(SpawnActor(blueprint, transform))
 
         for response in client.apply_batch_sync(batch, synchronous_master):
             if response.error:
@@ -144,8 +146,8 @@ def generate_traffic(carla_ip, rpc_port, tm_port, number_of_vehicles, number_of_
 
         # Set automatic vehicle lights update if specified
         all_vehicle_actors = world.get_actors(vehicles_list)
-        for actor in all_vehicle_actors:
-            traffic_manager.update_vehicle_lights(actor, True)
+        #for actor in all_vehicle_actors:
+        #    traffic_manager.update_vehicle_lights(actor, True)
 
         # -------------
         # Spawn Walkers
@@ -224,7 +226,7 @@ def generate_traffic(carla_ip, rpc_port, tm_port, number_of_vehicles, number_of_
         print('spawned %d vehicles and %d walkers, press Ctrl+C to exit.' % (len(vehicles_list), len(walkers_list)))
 
         # Example of how to use Traffic Manager parameters
-        traffic_manager.global_percentage_speed_difference(30.0)
+        # traffic_manager.global_percentage_speed_difference(30.0)
         """
 
         traffic_manager_is_up.set()
@@ -240,8 +242,7 @@ def generate_traffic(carla_ip, rpc_port, tm_port, number_of_vehicles, number_of_
                 print("Ego vehicle found")
                 hero_actor = vehicle
                 break
-        
-        """
+
         # Pre-Warm UP
         for i in range(100):
             world.tick()
@@ -253,12 +254,10 @@ def generate_traffic(carla_ip, rpc_port, tm_port, number_of_vehicles, number_of_
         time.sleep(wait_a_little_bit_before_starting)
         for i in range(warm_up_frames):
             world.tick()
-            """
             hero_transform = hero_actor.get_transform()
             hero_transform.location.z += 30
             hero_transform.rotation.pitch = -90.
             world.get_spectator().set_transform(hero_transform)
-            """
         tm_ready_to_take_data.set()
         while True:
             if dt_ready_to_take_data.is_set():
@@ -266,12 +265,10 @@ def generate_traffic(carla_ip, rpc_port, tm_port, number_of_vehicles, number_of_
         time.sleep(wait_a_little_bit_before_starting)
         while True:
             world.tick()
-            """
             hero_transform = hero_actor.get_transform()
             hero_transform.location.z += 30
             hero_transform.rotation.pitch = -90.
             world.get_spectator().set_transform(hero_transform)
-            """
             if dt_want_to_stop_taking_data.is_set():
                 break
         while True:
