@@ -39,7 +39,7 @@ def generate_traffic(carla_ip, rpc_port, tm_port, number_of_vehicles, number_of_
         import carla
     except:
         raise Exception(color_error_string(f"Not able to import Carla!"))
-    
+
     if not os.path.isdir(os.path.dirname(logs_path)):
         try:
             os.mkdir(os.path.dirname(logs_path))
@@ -49,7 +49,7 @@ def generate_traffic(carla_ip, rpc_port, tm_port, number_of_vehicles, number_of_
         os.remove(logs_path)
     with open(logs_path, 'w') as _:
         pass
-    
+
     out_err_logs_file = open(logs_path, "w")
     sys.stdout = out_err_logs_file
     sys.stderr = out_err_logs_file
@@ -63,8 +63,10 @@ def generate_traffic(carla_ip, rpc_port, tm_port, number_of_vehicles, number_of_
     synchronous_master = False
     random.seed(int(time.time()))
 
+
     try:
         world = client.get_world()
+        """
         traffic_manager = client.get_trafficmanager(tm_port)
 
         traffic_manager.set_global_distance_to_leading_vehicle(2.5)
@@ -235,7 +237,8 @@ def generate_traffic(carla_ip, rpc_port, tm_port, number_of_vehicles, number_of_
                 print("Ego vehicle found")
                 hero_actor = vehicle
                 break
-
+        
+        """
         # Pre-Warm UP
         for i in range(100):
             world.tick()
@@ -247,10 +250,12 @@ def generate_traffic(carla_ip, rpc_port, tm_port, number_of_vehicles, number_of_
         time.sleep(wait_a_little_bit_before_starting)
         for i in range(warm_up_frames):
             world.tick()
+            """
             hero_transform = hero_actor.get_transform()
             hero_transform.location.z += 30
             hero_transform.rotation.pitch = -90.
             world.get_spectator().set_transform(hero_transform)
+            """
         tm_ready_to_take_data.set()
         while True:
             if dt_ready_to_take_data.is_set():
@@ -258,10 +263,12 @@ def generate_traffic(carla_ip, rpc_port, tm_port, number_of_vehicles, number_of_
         time.sleep(wait_a_little_bit_before_starting)
         while True:
             world.tick()
+            """
             hero_transform = hero_actor.get_transform()
             hero_transform.location.z += 30
             hero_transform.rotation.pitch = -90.
             world.get_spectator().set_transform(hero_transform)
+            """
             if dt_want_to_stop_taking_data.is_set():
                 break
         while True:
@@ -278,9 +285,11 @@ def generate_traffic(carla_ip, rpc_port, tm_port, number_of_vehicles, number_of_
         print('\ndestroying %d vehicles' % len(vehicles_list))
         client.apply_batch([carla.command.DestroyActor(x) for x in vehicles_list])
 
+        """
         # stop walker controllers (list is [controller, actor, controller, actor ...])
         for i in range(0, len(all_id), 2):
             all_actors[i].stop()
+        """
 
         print('\ndestroying %d walkers' % len(walkers_list))
         client.apply_batch([carla.command.DestroyActor(x) for x in all_id])
