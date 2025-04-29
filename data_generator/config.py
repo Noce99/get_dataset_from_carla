@@ -28,7 +28,7 @@ MAXIMUM_LIDAR_HEIGHT = 3  # m
 HOW_MANY_CARLA_FRAME_FOR_CALCULATING_SPEEDS = 3
 TOWN_DICT = {1:  "Town01", 2:  "Town02", 3:  "Town03", 4:  "Town04",
              5:  "Town05",  # 6:  "Town06",  # BUGGY IN DATA CREATION
-             7:  "Town07", 10: "Town10HD", }  # 12: "Town12", 13: "Town13", 15: "Town15"}  # BUGGY IN DATA CREATION
+             7:  "Town07", 10: "Town10HD_Opt", }  # 12: "Town12", 13: "Town13", 15: "Town15"}  # BUGGY IN DATA CREATION
 MINIMUM_SPEED_DIFFERENCE_TO_PUT_ACCELERATION_TO_0 = 0.05
 NUM_OF_BBS_PER_FRAME = 100
 
