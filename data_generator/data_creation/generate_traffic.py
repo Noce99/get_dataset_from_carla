@@ -225,8 +225,11 @@ def generate_traffic(carla_ip, rpc_port, tm_port, number_of_vehicles, number_of_
 
         # Example of how to use Traffic Manager parameters
         traffic_manager.global_percentage_speed_difference(30.0)
+        """
 
         traffic_manager_is_up.set()
+
+        """
         sys.stdout.flush()
         sys.stderr.flush()
 
