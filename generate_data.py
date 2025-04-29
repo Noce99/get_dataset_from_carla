@@ -226,14 +226,15 @@ def run_all(args, where_to_save, carla_ue4_path, carla_log_path, sensors_json):
 
 if __name__ == "__main__":
     my_args = get_arguments()
-    egg_file_path, my_carla_ue4_path = add_carla_to_python_path(my_args.carla_path, my_args.end_of_egg_file)
+    my_carla_executable_path = "/home/carla/CarlaUE5/Build/Package/Carla-0.10.0-Linux-Shipping/Linux/CarlaUnreal.sh"
+    # egg_file_path, my_carla_ue4_path = add_carla_to_python_path(my_args.carla_path, my_args.end_of_egg_file)
     try:
         import carla
     except:
-        raise Exception(utils.color_error_string(f"Not able to import Carla from [{egg_file_path}]"))
+        raise Exception(utils.color_error_string(f"Not able to import Carla!"))
 
     print(utils.get_a_title("STARTING THE PROCESS", color="blue"))
-    print(utils.color_info_success(f"Find out a valid carla in {egg_file_path}!"))
+    # print(utils.color_info_success(f"Find out a valid carla in {egg_file_path}!"))
 
     # (0) SET UP LOGS AND DATASET FOLDER
     repo_path = pathlib.Path(__file__).parent.resolve()
@@ -271,7 +272,7 @@ if __name__ == "__main__":
         try:
             print(utils.get_a_title(f"ATTEMPT [{i + 1}/{config.MAX_NUM_OF_ATTEMPTS}]", color="blue"))
             # (2.2) LET'S RUN ALL FOR EACH ATTEMPT
-            if run_all(my_args, my_where_to_save, my_carla_ue4_path, my_carla_log_path, sensors_json):
+            if run_all(my_args, my_where_to_save, my_carla_executable_path, my_carla_log_path, sensors_json):
                 break
         except utils.NutException as e:
             print(e.message)
