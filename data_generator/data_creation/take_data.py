@@ -22,7 +22,7 @@ from ..utils import NutException, color_error_string
 def take_data(carla_egg_path, rpc_port, ego_vehicle_found_event, finished_taking_data_event,
               where_to_save, sensors_json, tm_ready_to_warm_up, tm_ready_to_take_data, dt_ready_to_warm_up,
               dt_ready_to_take_data, dt_want_to_stop_taking_data, warm_up_frames, frames_to_take):
-    sys.path.append(carla_egg_path)
+    # sys.path.append(carla_egg_path)
     try:
         import carla
     except:

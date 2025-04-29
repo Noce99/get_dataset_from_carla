@@ -187,6 +187,7 @@ def run_all(args, where_to_save, carla_ue4_path, carla_log_path, sensors_json):
     data_creation_pid = multiprocessing.Value(c_int)
     ego_vehicle_found_event = multiprocessing.Event()
     finished_taking_data_event = multiprocessing.Event()
+    egg_file_path = "SUCA"
     data_creation_process = multiprocessing.Process(target=take_data.take_data,
                                                     args=(egg_file_path, args.rpc_port,ego_vehicle_found_event,
                                                           finished_taking_data_event, where_to_save, sensors_json,
