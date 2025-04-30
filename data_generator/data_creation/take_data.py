@@ -37,8 +37,8 @@ def take_data(carla_egg_path, rpc_port, ego_vehicle_found_event, finished_taking
     # (2) Search the CAR
     hero = None
     while hero is None:
-        print("Waiting for the ego vehicle...")
         possible_vehicles = world.get_actors().filter('vehicle.*')
+        print(f"Waiting for the ego vehicle... [total vehicle = {len(possible_vehicles)}]")
         for vehicle in possible_vehicles:
             if vehicle.attributes['role_name'] == 'hero':
                 print("Ego vehicle found")

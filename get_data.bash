@@ -8,7 +8,8 @@ do
   --num_of_vehicle 0 \
   --num_of_walkers 0 \
   --dataset_path /home/carla/"$current_data" \
-  --sequence_id "$i"
+  --sequence_id "$i" \
+  --show_carla_window
   exit_code=$?
   if [ $exit_code -eq 99 ]; then
     exit 0
