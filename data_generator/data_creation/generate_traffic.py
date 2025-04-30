@@ -119,7 +119,8 @@ def generate_traffic(carla_ip, rpc_port, tm_port, number_of_vehicles, number_of_
             blueprint.set_attribute('role_name', 'hero')
             # batch.append(SpawnActor(blueprint, spawn_points[random.randint(0, len(spawn_points) - 1)]))
                          # .then(SetAutopilot(FutureActor, True, traffic_manager.get_port())))
-            actor = world.spawn_actor(blueprint, spawn_points[random.randint(0, len(spawn_points) - 1)])
+            transform = carla.Transform(carla.Location(x=230, y=195, z=40), carla.Rotation(yaw=180))
+            actor = world.spawn_actor(blueprint, transform)
 
         """
         for n, transform in enumerate(spawn_points[:]):
