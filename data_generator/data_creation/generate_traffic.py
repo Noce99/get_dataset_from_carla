@@ -122,7 +122,7 @@ def generate_traffic(carla_ip, rpc_port, tm_port, number_of_vehicles, number_of_
         for n, transform in enumerate(spawn_points[:]):
             if n >= number_of_vehicles:
                 break
-            blueprint = random.choice(blueprints)
+            blueprint = world.get_blueprint_library().find('vehicle.mini.cooper') # random.choice(blueprints)
             if blueprint.has_attribute('color'):
                 color = random.choice(blueprint.get_attribute('color').recommended_values)
                 blueprint.set_attribute('color', color)
