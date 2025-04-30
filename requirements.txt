@@ -5,3 +5,7 @@ opencv-python
 tqdm
 opencv-python
 termcolor
+h5py
+torch
+hdf5plugin
+matplotlib
