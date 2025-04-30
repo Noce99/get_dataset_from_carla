@@ -118,10 +118,8 @@ def generate_traffic(carla_ip, rpc_port, tm_port, number_of_vehicles, number_of_
             blueprint.set_attribute('color', blueprint.get_attribute('color').recommended_values[0])
             blueprint.set_attribute('role_name', 'hero')
             print(f"spawn_points = {spawn_points}")
-            batch.append(SpawnActor(blueprint, spawn_points[random.randint(0, len(spawn_points) - 1)]))
-                         # .then(SetAutopilot(FutureActor, True, traffic_manager.get_port())))
-
-        """
+            batch.append(SpawnActor(blueprint, spawn_points[random.randint(0, len(spawn_points) - 1)])
+                         .then(SetAutopilot(FutureActor, True, traffic_manager.get_port())))
         for n, transform in enumerate(spawn_points[:]):
             if n >= number_of_vehicles:
                 break
@@ -137,7 +135,6 @@ def generate_traffic(carla_ip, rpc_port, tm_port, number_of_vehicles, number_of_
             # spawn the cars and set their autopilot and light state all together
             batch.append(SpawnActor(blueprint, transform)
                          .then(SetAutopilot(FutureActor, True, traffic_manager.get_port())))
-        """
 
         for response in client.apply_batch_sync(batch, synchronous_master):
             if response.error:
