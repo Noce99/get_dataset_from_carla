@@ -5,7 +5,7 @@ do
   python generate_data.py \
   --carla_path /home/carla/CarlaUE5/ \
   --town 10 \
-  --num_of_vehicle 10 \
+  --num_of_vehicle 0 \
   --num_of_walkers 0 \
   --dataset_path /home/carla/"$current_data" \
   --sequence_id "$i" \
