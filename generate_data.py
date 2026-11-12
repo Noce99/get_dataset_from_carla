@@ -114,6 +114,7 @@ def kill_all():
 def run_all(args, where_to_save, carla_ue4_path, carla_log_path, sensors_json):
     # (1) LAUNCH CARLA SERVER
     print("Launching Carla Server...")
+    print(f"Carla Path = {carla_ue4_path}")
     carla_server_pid = multiprocessing.Value(c_int)
     carla_was_correctly_started_up = launch_carla_server_and_wait_till_its_up(
         rpc_port=args.rpc_port,
@@ -227,8 +228,9 @@ def run_all(args, where_to_save, carla_ue4_path, carla_log_path, sensors_json):
 
 if __name__ == "__main__":
     my_args = get_arguments()
-    my_carla_executable_path = "/home/carla/CarlaUE5/Build/Package/Carla-0.10.0-Linux-Shipping/Linux/CarlaUnreal.sh"
-    # egg_file_path, my_carla_ue4_path = add_carla_to_python_path(my_args.carla_path, my_args.end_of_egg_file)
+    # my_carla_executable_path = "/home/carla/CarlaUE5/Build/Package/Carla-0.10.0-Linux-Shipping/Linux/CarlaUnreal.sh"
+    egg_file_path, my_carla_ue4_path = add_carla_to_python_path(my_args.carla_path, my_args.end_of_egg_file)
+    my_carla_executable_path = my_carla_ue4_path
     try:
         import carla
     except:

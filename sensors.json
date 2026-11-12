@@ -57,7 +57,7 @@
         "image_size_y": 480,
         "positive_threshold": 0.2,
         "negative_threshold": 0.2,
-        "sensor_tick": 0.01
+        "sensor_tick": 0.05
       },
       "location": {
         "x": 1.0,
@@ -79,7 +79,7 @@
         "image_size_y": 480,
         "positive_threshold": 0.2,
         "negative_threshold": 0.2,
-        "sensor_tick": 0.01
+        "sensor_tick": 0.05
       },
       "location": {
         "x": 1.0,
